@@ -169,17 +169,26 @@ class Plugin(BasePlugin):
 
     def bcrypt(self, dialog):
         self.rawnoise = False
-        dialog.show_message(''.join([_("{} encrypted for Revealer {}_{} saved as PNG and PDF at:").format(self.was, self.version, self.code_id),
-                                     "<br/>","<b>", self.base_dir+ self.filename+self.version+"_"+self.code_id,"</b>"]))
+        version = self.versioned_seed.version
+        code_id = self.versioned_seed.checksum
+        dialog.show_message(''.join([_("{} encrypted for Revealer {}_{} saved as PNG and PDF at: ").format(self.was, version, code_id),
+                                     "<b>", self.get_path_to_revealer_file(), "</b>", "<br/>",
+                                     "<br/>", "<b>", _("Always check you backups.")]),
+                            rich_text=True)
         dialog.close()
 
     def ext_warning(self, dialog):
-        dialog.show_message(''.join(["<b>",_("Warning: "), "</b>", _("your seed extension will not be included in the encrypted backup.")]))
+        dialog.show_message(''.join(["<b>",_("Warning"), ": </b>",
+                                     _("your seed extension will <b>not</b> be included in the encrypted backup.")]),
+                            rich_text=True)
         dialog.close()
 
     def bdone(self, dialog):
-        dialog.show_message(''.join([_("Digital Revealer ({}_{}) saved as PNG and PDF at:").format(self.version, self.code_id),
-                                     "<br/>","<b>", self.base_dir + 'revealer_' +self.version + '_'+ self.code_id, '</b>']))
+        version = self.versioned_seed.version
+        code_id = self.versioned_seed.checksum
+        dialog.show_message(''.join([_("Digital Revealer ({}_{}) saved as PNG and PDF at:").format(version, code_id),
+                                     "<br/>","<b>", self.get_path_to_revealer_file(), '</b>']),
+                            rich_text=True)
 
 
     def customtxt_limits(self):
@@ -195,6 +204,18 @@ class Plugin(BasePlugin):
     def t(self):
         self.txt = self.text.text()
         self.seed_img(is_seed=False)
+
+    def warn_old_revealer(self):
+        if self.versioned_seed.version == '0':
+            link = "https://revealer.cc/revealer-warning-and-upgrade/"
+            self.d.show_warning(("<b>{warning}: </b>{ver0}<br>"
+                                 "{url}<br>"
+                                 "{risk}")
+                                .format(warning=_("Warning"),
+                                        ver0=_("Revealers starting with 0 are not secure due to a vulnerability."),
+                                        url=_("More info at: {}").format(f'<a href="{link}">{link}</a>'),
+                                        risk=_("Proceed at your own risk.")),
+                                rich_text=True)
 
     def cypherseed_dialog(self, window):
 
