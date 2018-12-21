@@ -707,6 +707,7 @@ class Network(PrintError):
     async def broadcast_transaction(self, tx, *, timeout=10):
         out = await self.interface.session.send_request('blockchain.transaction.broadcast', [str(tx)], timeout=timeout)
         if out != tx.txid():
+            # note: this is untrusted input from the server
             raise Exception(out)
         return out  # txid
 
