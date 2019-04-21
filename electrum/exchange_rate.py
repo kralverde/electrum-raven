@@ -141,6 +141,7 @@ class ExchangeBase(PrintError):
     async def get_currencies(self):
         rates = await self.get_rates('')
         return sorted([str(a) for (a, b) in rates.items() if b is not None and len(a)==3])
+        
 
 class Bittrex(ExchangeBase):
     async def get_rates(self, ccy):
@@ -149,7 +150,6 @@ class Bittrex(ExchangeBase):
             json2 = await self.get_json('apiv2.bitcoinaverage.com', '/indices/global/ticker/BTC%s' % ccy)
             return {ccy: Decimal(json1['result']['Last'])*Decimal(json2['last'])}
         return {ccy: Decimal(json1['result']['Last'])}
-
 
 def dictinvert(d):
     inv = {}

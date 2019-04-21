@@ -284,13 +284,14 @@ class Blockchain(util.PrintError):
 
     @classmethod
     def verify_header(cls, header: dict, prev_hash: str, target: int, expected_header_hash: str=None) -> None:
+        height = header.get('block_height')
         _hash = hash_header(header)
         if expected_header_hash and expected_header_hash != _hash:
             raise Exception("hash mismatches with expected: {} vs {}".format(expected_header_hash, _hash))
         if prev_hash != header.get('prev_block_hash'):
             raise Exception("prev hash mismatch: %s vs %s" % (prev_hash, header.get('prev_block_hash')))
         # DGWv3 PastBlocksMax = 24 Because checkpoint don't have preblock data.
-        if height % 2016 != 0 and height // 2016 < len(self.checkpoints) or height >= len(self.checkpoints)*2016 and height <= len(self.checkpoints)*2016 + DGW_PASTBLOCKS:
+        if height % 2016 != 0 and height // 2016 < len(constants.net.CHECKPOINTS) or height >= len(constants.net.CHECKPOINTS)*2016 and height <= len(constants.net.CHECKPOINTS)*2016 + DGW_PASTBLOCKS:
             return
         if constants.net.TESTNET:
             return
@@ -377,7 +378,8 @@ class Blockchain(util.PrintError):
         they will be stored in different files."""
         if self.parent is None:
             return False
-        if self.parent.get_chainwork() >= self.get_chainwork():
+#        if self.parent.get_chainwork() >= self.get_chainwork():
+        if self.parent.height() - self.forkpoint + 1 >= self.size():
             return False
         self.print_error("swap", self.forkpoint, self.parent.forkpoint)
         parent_branch_size = self.parent.height() - self.forkpoint + 1
@@ -631,7 +633,7 @@ class Blockchain(util.PrintError):
     def chainwork_of_header_at_height(self, height: int) -> int:
         """work done by single header at given height"""
         chunk_idx = height // 2016 - 1
-        target = self.get_target(chunk_idx)
+        target = self.get_target(index * 2016)
         work = ((2 ** 256 - target - 1) // (target + 1)) + 1
         return work
 
