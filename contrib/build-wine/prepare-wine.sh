@@ -1,10 +1,9 @@
 #!/bin/bash
 
-PYTHON_VERSION=3.6.6
-# Please update these links carefully, some versions won't work under Wine
-NSIS_FILENAME=nsis-3.03-setup.exe
+# Please update these carefully, some versions won't work under Wine
+NSIS_FILENAME=nsis-3.04-setup.exe
 NSIS_URL=https://prdownloads.sourceforge.net/nsis/$NSIS_FILENAME?download
-NSIS_SHA256=bd3b15ab62ec6b0c7a00f46022d441af03277be893326f6fea8e212dc2d77743
+NSIS_SHA256=4e1db5a7400e348b1b46a4a11b6d9557fd84368e4ad3d4bc4c1be636c89638aa
 
 X16R_HASH_FILENAME=x16r_hash-1.0-cp36-cp36m-win32.whl
 X16R_HASH_PYTHON_URL=https://files.pythonhosted.org/packages/2e/ae/dabd6df3d3d148bbd19305c0c8e415f4ffd6e67646a67e0689e5a48cdb58/$X16R_HASH_FILENAME
@@ -22,12 +21,14 @@ LIBUSB_FILENAME=libusb-1.0.22.7z
 LIBUSB_URL=https://prdownloads.sourceforge.net/project/libusb/libusb-1.0/libusb-1.0.22/$LIBUSB_FILENAME?download
 LIBUSB_SHA256=671f1a420757b4480e7fadc8313d6fb3cbb75ca00934c417c1efa6e77fb8779b
 
+PYTHON_VERSION=3.6.8
 
 ## These settings probably don't need change
 export WINEPREFIX=/opt/wine64
 #export WINEARCH='win32'
 
-PYHOME=c:/python$PYTHON_VERSION
+PYTHON_FOLDER="python3"
+PYHOME="c:/$PYTHON_FOLDER"
 PYTHON="wine $PYHOME/python.exe -OO -B"
 
 
@@ -84,15 +85,13 @@ retry() {
 }
 
 # Let's begin!
-here=$(dirname $(readlink -e $0))
+here="$(dirname "$(readlink -e "$0")")"
 set -e
+
+. $here/../build_tools_util.sh
 
 wine 'wineboot'
 
-# HACK to work around https://bugs.winehq.org/show_bug.cgi?id=42474#c22
-# needed for python 3.6+
-rm -f /opt/wine-stable/lib/wine/fakedlls/api-ms-win-core-path-l1-1-0.dll
-rm -f /opt/wine-stable/lib/wine/api-ms-win-core-path-l1-1-0.dll.so
 
 cd /tmp/electrum-rvn-build
 
@@ -113,27 +112,20 @@ for msifile in core dev exe lib pip tools; do
     wget -N -c "https://www.python.org/ftp/python/$PYTHON_VERSION/win32/${msifile}.msi"
     wget -N -c "https://www.python.org/ftp/python/$PYTHON_VERSION/win32/${msifile}.msi.asc"
     verify_signature "${msifile}.msi.asc" $KEYRING_PYTHON_DEV
-    wine msiexec /i "${msifile}.msi" /qb TARGETDIR=C:/python$PYTHON_VERSION
+    wine msiexec /i "${msifile}.msi" /qb TARGETDIR=$PYHOME
 done
 
-# upgrade pip
-$PYTHON -m pip install pip --upgrade
-
-# install PySocks
-$PYTHON -m pip install win_inet_pton==1.0.1
-
-$PYTHON -m pip install -r $here/../deterministic-build/requirements-binaries.txt
+# Install dependencies specific to binaries
+# note that this also installs pinned versions of both pip and setuptools
+$PYTHON -m pip install -r "$here"/../deterministic-build/requirements-binaries.txt
 
 # Install PyInstaller
-$PYTHON -m pip install pyinstaller==3.4
+$PYTHON -m pip install pyinstaller==3.4 --no-use-pep517
 
 # Install ZBar
 download_if_not_exist $ZBAR_FILENAME "$ZBAR_URL"
 verify_hash $ZBAR_FILENAME "$ZBAR_SHA256"
 wine "$PWD/$ZBAR_FILENAME" /S
-
-# Upgrade setuptools (so Electrum can be installed later)
-$PYTHON -m pip install setuptools --upgrade
 
 # Install NSIS installer
 download_if_not_exist $NSIS_FILENAME "$NSIS_URL"
@@ -144,7 +136,7 @@ download_if_not_exist $LIBUSB_FILENAME "$LIBUSB_URL"
 verify_hash $LIBUSB_FILENAME "$LIBUSB_SHA256"
 7z x -olibusb $LIBUSB_FILENAME -aoa
 
-cp libusb/MS32/dll/libusb-1.0.dll $WINEPREFIX/drive_c/python$PYTHON_VERSION/
+cp libusb/MS32/dll/libusb-1.0.dll $WINEPREFIX/drive_c/$PYTHON_FOLDER/
 
 
 # install x16r_hash

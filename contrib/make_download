@@ -23,8 +23,9 @@ string = string.replace("##VERSION_ANDROID##", version_android)
 string = string.replace("##VERSION_APK##", APK_VERSION)
 
 files = {
-    'tgz': "Electrum-RVN-%s.tar.gz" % version,
-    'zip': "Electrum-RVN-%s.zip" % version,
+    'tgz': "Electrum-rvn-%s.tar.gz" % version,
+    'appimage': "electrum-rvn-%s-x86_64.AppImage" % version,
+    'zip': "Electrum-rvn-%s.zip" % version,
     'mac': "electrum-rvn-%s.dmg" % version_mac,
     'win': "electrum-rvn-%s.exe" % version_win,
     'win_setup': "electrum-rvn-%s-setup.exe" % version_win,
@@ -33,7 +34,7 @@ files = {
 
 for k, n in files.items():
     path = "dist/%s"%n
-    link = "https://download.electrum-rvn.org/%s/%s"%(version,n)
+    link = "https://download.electrum.org/%s/%s"%(version,n)
     if not os.path.exists(path):
         os.system("wget -q %s -O %s" % (link, path))
     if not os.path.getsize(path):

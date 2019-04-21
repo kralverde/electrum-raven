@@ -3,12 +3,6 @@
         "pruning": "-",
         "s": "50002",
         "t": "50001",
-        "version": "1.3"
-    },
-    "electrum-rvn.minermore.com": {
-        "pruning": "-",
-        "s": "50002",
-        "t": "50001",
-        "version": "1.3"
+        "version": "1.4"
     }
 }

@@ -38,7 +38,8 @@ from .util import print_error, profiler, to_bytes, bh2u, bfh
 from .bitcoin import (TYPE_ADDRESS, TYPE_PUBKEY, TYPE_SCRIPT, hash_160,
                       hash160_to_p2sh, hash160_to_p2pkh, hash_to_segwit_addr,
                       hash_encode, var_int, TOTAL_COIN_SUPPLY_LIMIT_IN_BTC, COIN,
-                      op_push, int_to_hex, push_script, b58_address_to_hash160)
+                      push_script, int_to_hex, push_script, b58_address_to_hash160,
+                      opcodes, add_number_to_script, base_decode)
 from .crypto import sha256d
 from .keystore import xpubkey_to_address, xpubkey_to_pubkey
 
@@ -125,7 +126,7 @@ class BCDataStream(object):
             self.read_cursor += length
             return result
         except IndexError:
-            raise SerializationError("attempt to read past end of buffer")
+            raise SerializationError("attempt to read past end of buffer") from None
 
     def can_read_more(self) -> bool:
         if not self.input:
@@ -159,8 +160,8 @@ class BCDataStream(object):
             elif size == 255:
                 size = self._read_num('<Q')
             return size
-        except IndexError:
-            raise SerializationError("attempt to read past end of buffer")
+        except IndexError as e:
+            raise SerializationError("attempt to read past end of buffer") from e
 
     def write_compact_size(self, size):
         if size < 0:
@@ -182,89 +183,12 @@ class BCDataStream(object):
             (i,) = struct.unpack_from(format, self.input, self.read_cursor)
             self.read_cursor += struct.calcsize(format)
         except Exception as e:
-            raise SerializationError(e)
+            raise SerializationError(e) from e
         return i
 
     def _write_num(self, format, num):
         s = struct.pack(format, num)
         self.write(s)
-
-
-# enum-like type
-# From the Python Cookbook, downloaded from http://code.activestate.com/recipes/67107/
-class EnumException(Exception):
-    pass
-
-
-class Enumeration:
-    def __init__(self, name, enumList):
-        self.__doc__ = name
-        lookup = { }
-        reverseLookup = { }
-        i = 0
-        uniqueNames = [ ]
-        uniqueValues = [ ]
-        for x in enumList:
-            if isinstance(x, tuple):
-                x, i = x
-            if not isinstance(x, str):
-                raise EnumException("enum name is not a string: " + x)
-            if not isinstance(i, int):
-                raise EnumException("enum value is not an integer: " + i)
-            if x in uniqueNames:
-                raise EnumException("enum name is not unique: " + x)
-            if i in uniqueValues:
-                raise EnumException("enum value is not unique for " + x)
-            uniqueNames.append(x)
-            uniqueValues.append(i)
-            lookup[x] = i
-            reverseLookup[i] = x
-            i = i + 1
-        self.lookup = lookup
-        self.reverseLookup = reverseLookup
-
-    def __getattr__(self, attr):
-        if attr not in self.lookup:
-            raise AttributeError
-        return self.lookup[attr]
-    def whatis(self, value):
-        return self.reverseLookup[value]
-
-
-# This function comes from bitcointools, bct-LICENSE.txt.
-def long_hex(bytes):
-    return bytes.encode('hex_codec')
-
-# This function comes from bitcointools, bct-LICENSE.txt.
-def short_hex(bytes):
-    t = bytes.encode('hex_codec')
-    if len(t) < 11:
-        return t
-    return t[0:4]+"..."+t[-4:]
-
-
-
-opcodes = Enumeration("Opcodes", [
-    ("OP_0", 0), ("OP_PUSHDATA1",76), "OP_PUSHDATA2", "OP_PUSHDATA4", "OP_1NEGATE", "OP_RESERVED",
-    "OP_1", "OP_2", "OP_3", "OP_4", "OP_5", "OP_6", "OP_7",
-    "OP_8", "OP_9", "OP_10", "OP_11", "OP_12", "OP_13", "OP_14", "OP_15", "OP_16",
-    "OP_NOP", "OP_VER", "OP_IF", "OP_NOTIF", "OP_VERIF", "OP_VERNOTIF", "OP_ELSE", "OP_ENDIF", "OP_VERIFY",
-    "OP_RETURN", "OP_TOALTSTACK", "OP_FROMALTSTACK", "OP_2DROP", "OP_2DUP", "OP_3DUP", "OP_2OVER", "OP_2ROT", "OP_2SWAP",
-    "OP_IFDUP", "OP_DEPTH", "OP_DROP", "OP_DUP", "OP_NIP", "OP_OVER", "OP_PICK", "OP_ROLL", "OP_ROT",
-    "OP_SWAP", "OP_TUCK", "OP_CAT", "OP_SUBSTR", "OP_LEFT", "OP_RIGHT", "OP_SIZE", "OP_INVERT", "OP_AND",
-    "OP_OR", "OP_XOR", "OP_EQUAL", "OP_EQUALVERIFY", "OP_RESERVED1", "OP_RESERVED2", "OP_1ADD", "OP_1SUB", "OP_2MUL",
-    "OP_2DIV", "OP_NEGATE", "OP_ABS", "OP_NOT", "OP_0NOTEQUAL", "OP_ADD", "OP_SUB", "OP_MUL", "OP_DIV",
-    "OP_MOD", "OP_LSHIFT", "OP_RSHIFT", "OP_BOOLAND", "OP_BOOLOR",
-    "OP_NUMEQUAL", "OP_NUMEQUALVERIFY", "OP_NUMNOTEQUAL", "OP_LESSTHAN",
-    "OP_GREATERTHAN", "OP_LESSTHANOREQUAL", "OP_GREATERTHANOREQUAL", "OP_MIN", "OP_MAX",
-    "OP_WITHIN", "OP_RIPEMD160", "OP_SHA1", "OP_SHA256", "OP_HASH160",
-    "OP_HASH256", "OP_CODESEPARATOR", "OP_CHECKSIG", "OP_CHECKSIGVERIFY", "OP_CHECKMULTISIG",
-    "OP_CHECKMULTISIGVERIFY",
-    ("OP_NOP1", 0xB0),
-    ("OP_CHECKLOCKTIMEVERIFY", 0xB1), ("OP_CHECKSEQUENCEVERIFY", 0xB2),
-    "OP_NOP4", "OP_NOP5", "OP_NOP6", "OP_NOP7", "OP_NOP8", "OP_NOP9", "OP_NOP10",
-    ("OP_INVALIDOPCODE", 0xFF),
-])
 
 
 def script_GetOp(_bytes : bytes):
@@ -292,10 +216,6 @@ def script_GetOp(_bytes : bytes):
             i += nSize
 
         yield opcode, vch, i
-
-
-def script_GetOpName(opcode):
-    return (opcodes.whatis(opcode)).replace("OP_", "")
 
 
 class OPPushDataGeneric:
@@ -649,16 +569,13 @@ def deserialize(raw: str, force_full_parse=False) -> dict:
 
 # pay & redeem scripts
 
-
-
 def multisig_script(public_keys: Sequence[str], m: int) -> str:
     n = len(public_keys)
-    assert n <= 15
-    assert m <= n
-    op_m = format(opcodes.OP_1 + m - 1, 'x')
-    op_n = format(opcodes.OP_1 + n - 1, 'x')
-    keylist = [op_push(len(k)//2) + k for k in public_keys]
-    return op_m + ''.join(keylist) + op_n + 'ae'
+    assert 1 <= m <= n <= 15, f'm {m}, n {n}'
+    op_m = bh2u(add_number_to_script(m))
+    op_n = bh2u(add_number_to_script(n))
+    keylist = [push_script(k) for k in public_keys]
+    return op_m + ''.join(keylist) + op_n + opcodes.OP_CHECKMULTISIG.hex()
 
 
 
@@ -682,7 +599,7 @@ class Transaction:
         self._inputs = None
         self._outputs = None  # type: List[TxOutput]
         self.locktime = 0
-        self.version = 1
+        self.version = 2
         # by default we assume this is a partial txn;
         # this value will get properly set when deserializing
         self.is_partial_originally = True
@@ -763,6 +680,17 @@ class Transaction:
         txin['witness'] = None    # force re-serialization
         self.raw = None
 
+    def add_inputs_info(self, wallet):
+        if self.is_complete():
+            return
+        for txin in self.inputs():
+            wallet.add_input_info(txin)
+
+    def remove_signatures(self):
+        for txin in self.inputs():
+            txin['signatures'] = [None] * len(txin['signatures'])
+        assert not self.is_complete()
+
     def deserialize(self, force_full_parse=False):
         if self.raw is None:
             return
@@ -779,16 +707,19 @@ class Transaction:
         return d
 
     @classmethod
-    def from_io(klass, inputs, outputs, locktime=0):
+    def from_io(klass, inputs, outputs, locktime=0, version=None):
         self = klass(None)
         self._inputs = inputs
         self._outputs = outputs
         self.locktime = locktime
+        if version is not None:
+            self.version = version
         self.BIP69_sort()
         return self
 
     @classmethod
-    def pay_script(self, output_type, addr):
+    def pay_script(self, output_type, addr: str) -> str:
+        """Returns scriptPubKey in hex form."""
         if output_type == TYPE_SCRIPT:
             return addr
         elif output_type == TYPE_ADDRESS:
@@ -852,7 +783,7 @@ class Transaction:
     @classmethod
     def serialize_witness(self, txin, estimate_size=False):
         _type = txin['type']
-        if not self.is_segwit_input(txin) and not self.is_input_value_needed(txin):
+        if not self.is_segwit_input(txin) and not txin['type'] == 'address':
             return '00'
         if _type == 'coinbase':
             return txin['witness']
@@ -889,10 +820,6 @@ class Transaction:
     @classmethod
     def is_segwit_inputtype(cls, txin_type):
         return txin_type in ('p2wpkh', 'p2wpkh-p2sh', 'p2wsh', 'p2wsh-p2sh')
-
-    @classmethod
-    def is_input_value_needed(cls, txin):
-        return cls.is_segwit_input(txin) or txin['type'] == 'address'
 
     @classmethod
     def guess_txintype_from_address(cls, addr):
@@ -955,7 +882,7 @@ class Transaction:
             scriptSig = bitcoin.p2wsh_nested_script(witness_script)
             return push_script(scriptSig)
         elif _type == 'address':
-            return 'ff00' + push_script(pubkeys[0])  # fd extended pubkey
+            return bytes([opcodes.OP_INVALIDOPCODE, opcodes.OP_0]).hex() + push_script(pubkeys[0])
         elif _type == 'unknown':
             return txin['scriptSig']
         return script
@@ -1025,10 +952,10 @@ class Transaction:
         if outputs:
             self._outputs.sort(key = lambda o: (o.value, self.pay_script(o.type, o.address)))
 
-    def serialize_output(self, output):
-        output_type, addr, amount = output
-        s = int_to_hex(amount, 8)
-        script = self.pay_script(output_type, addr)
+    @classmethod
+    def serialize_output(cls, output: TxOutput) -> str:
+        s = int_to_hex(output.value, 8)
+        script = cls.pay_script(output.type, output.address)
         s += var_int(len(script)//2)
         s += script
         return s
@@ -1199,8 +1126,6 @@ class Transaction:
         return s, r
 
     def is_complete(self):
-        if not self.is_partial_originally:
-            return True
         s, r = self.signature_count()
         return r == s
 
@@ -1260,19 +1185,26 @@ class Transaction:
         return out
 
 
-def tx_from_str(txt):
-    "json or raw hexadecimal"
-    import json
+def tx_from_str(txt: str) -> str:
+    """Sanitizes tx-describing input (json or raw hex or base43) into
+    raw hex transaction."""
+    assert isinstance(txt, str), f"txt must be str, not {type(txt)}"
     txt = txt.strip()
     if not txt:
         raise ValueError("empty string")
+    # try hex
     try:
         bfh(txt)
-        is_hex = True
-    except:
-        is_hex = False
-    if is_hex:
         return txt
+    except:
+        pass
+    # try base43
+    try:
+        return base_decode(txt, length=None, base=43).hex()
+    except:
+        pass
+    # try json
+    import json
     tx_dict = json.loads(str(txt))
     assert "hex" in tx_dict.keys()
     return tx_dict["hex"]

@@ -5,14 +5,14 @@ Electrum-raven - Lightweight Ravencoin client
 
   Licence: MIT Licence
   Author: Thomas Voegtlin
-  Port Maintainer: traysi@github (Electrum-raven)
+  Port Maintainer: standard-error@github (Electrum-raven)
   Language: Python (>= 3.6)
   Homepage: https://ravencoin.org/
 
 
 .. image:: https://minermore.com/images/ravencoin.svg
     :width: 100px
-    :target: https://github.com/traysi/electrum-raven
+    :target: https://github.com/standard-error/electrum-raven
     :alt: Build Status
 
 
@@ -32,9 +32,9 @@ You can also install Electrum-raven on your system, by running these commands::
     cd ~
     virtualenv -p /usr/local/bin/python3.7 pve
     source ~/pve/bin/activate
-    git clone https://github.com/traysi/electrum-raven
+    git clone https://github.com/standard-error/electrum-raven
     cd electrum-raven
-    pip3 install https://github.com/traysi/x16r_hash/releases/download/1.0/1.0.zip
+    pip3 install x16r_hash
     python3 -m pip install .[fast]
     pyrcc5 icons.qrc -o electrum/gui/qt/icons_rc.py
     pip3 install pyqt5
@@ -50,17 +50,18 @@ To create binaries, create the 'packages' directory::
 This directory contains the python dependencies used by Electrum-raven.
 
 Mac OS X / macOS
---------
+----------------
 
-See `contrib/build-osx/`.
+See :code:`contrib/osx/README.md`.
+
 
 Windows
 -------
 
-See `contrib/build-wine/`.
+See :code:`contrib/build-wine/docker/README.md`.
 
 
 Android
 -------
 
-See `electrum/gui/kivy/Readme.md` file.
+See :code:`electrum/gui/kivy/Readme.md`.

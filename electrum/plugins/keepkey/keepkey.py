@@ -2,9 +2,9 @@ from binascii import hexlify, unhexlify
 import traceback
 import sys
 
-from electrum.util import bfh, bh2u, UserCancelled
+from electrum.util import bfh, bh2u, UserCancelled, UserFacingException
 from electrum.bitcoin import TYPE_ADDRESS, TYPE_SCRIPT
-from electrum.bip32 import deserialize_xpub
+from electrum.bip32 import BIP32Node
 from electrum import constants
 from electrum.i18n import _
 from electrum.transaction import deserialize, Transaction
@@ -30,7 +30,7 @@ class KeepKey_KeyStore(Hardware_KeyStore):
         return self.plugin.get_client(self, force_pair)
 
     def decrypt_message(self, sequence, message, password):
-        raise RuntimeError(_('Encryption and decryption are not implemented by {}').format(self.device))
+        raise UserFacingException(_('Encryption and decryption are not implemented by {}').format(self.device))
 
     def sign_message(self, sequence, message, password):
         client = self.get_client()
@@ -50,7 +50,7 @@ class KeepKey_KeyStore(Hardware_KeyStore):
             pubkeys, x_pubkeys = tx.get_sorted_pubkeys(txin)
             tx_hash = txin['prevout_hash']
             if txin.get('prev_tx') is None and not Transaction.is_segwit_input(txin):
-                raise Exception(_('Offline signing with {} is not supported for legacy inputs.').format(self.device))
+                raise UserFacingException(_('Offline signing with {} is not supported for legacy inputs.').format(self.device))
             prev_tx[tx_hash] = txin['prev_tx']
             for x_pubkey in x_pubkeys:
                 if not is_xpubkey(x_pubkey):
@@ -85,10 +85,12 @@ class KeepKeyPlugin(HW_PluginBase):
             import keepkeylib
             import keepkeylib.ckd_public
             import keepkeylib.transport_hid
+            import keepkeylib.transport_webusb
             self.client_class = client.KeepKeyClient
             self.ckd_public = keepkeylib.ckd_public
             self.types = keepkeylib.client.types
-            self.DEVICE_IDS = keepkeylib.transport_hid.DEVICE_IDS
+            self.DEVICE_IDS = (keepkeylib.transport_hid.DEVICE_IDS +
+                               keepkeylib.transport_webusb.DEVICE_IDS)
             self.device_manager().register_devices(self.DEVICE_IDS)
             self.libraries_available = True
         except ImportError:
@@ -97,6 +99,13 @@ class KeepKeyPlugin(HW_PluginBase):
     def hid_transport(self, pair):
         from keepkeylib.transport_hid import HidTransport
         return HidTransport(pair)
+
+    def webusb_transport(self, device):
+        from keepkeylib.transport_webusb import WebUsbTransport
+        for d in WebUsbTransport.enumerate():
+            if device.id_.startswith(d.getSerialNumber()):
+                return WebUsbTransport(d)
+        return WebUsbTransport(device)
 
     def _try_hid(self, device):
         self.print_error("Trying to connect over USB...")
@@ -113,8 +122,20 @@ class KeepKeyPlugin(HW_PluginBase):
             self.print_error("cannot connect at", device.path, str(e))
             return None
 
+    def _try_webusb(self, device):
+        self.print_error("Trying to connect over WebUSB...")
+        try:
+            return self.webusb_transport(device)
+        except BaseException as e:
+            self.print_error("cannot connect at", device.path, str(e))
+            return None
+
     def create_client(self, device, handler):
-        transport = self._try_hid(device)
+        if device.product_key[1] == 2:
+            transport = self._try_webusb(device)
+        else:
+            transport = self._try_hid(device)
+
         if not transport:
             self.print_error("cannot connect to device")
             return
@@ -138,7 +159,7 @@ class KeepKeyPlugin(HW_PluginBase):
             if handler:
                 handler.show_error(msg)
             else:
-                raise Exception(msg)
+                raise UserFacingException(msg)
             return None
 
         return client
@@ -206,6 +227,8 @@ class KeepKeyPlugin(HW_PluginBase):
         language = 'english'
         devmgr = self.device_manager()
         client = devmgr.client_by_id(device_id)
+        if not client:
+            raise Exception(_("The device was disconnected."))
 
         if method == TIM_NEW:
             strength = 64 * (item + 2)  # 128, 192 or 256
@@ -227,13 +250,13 @@ class KeepKeyPlugin(HW_PluginBase):
                                        label, language)
 
     def _make_node_path(self, xpub, address_n):
-        _, depth, fingerprint, child_num, chain_code, key = deserialize_xpub(xpub)
+        bip32node = BIP32Node.from_xkey(xpub)
         node = self.types.HDNodeType(
-            depth=depth,
-            fingerprint=int.from_bytes(fingerprint, 'big'),
-            child_num=int.from_bytes(child_num, 'big'),
-            chain_code=chain_code,
-            public_key=key,
+            depth=bip32node.depth,
+            fingerprint=int.from_bytes(bip32node.fingerprint, 'big'),
+            child_num=int.from_bytes(bip32node.child_number, 'big'),
+            chain_code=bip32node.chaincode,
+            public_key=bip32node.eckey.get_public_key_bytes(compressed=True),
         )
         return self.types.HDNodePathType(node=node, address_n=address_n)
 
@@ -242,8 +265,8 @@ class KeepKeyPlugin(HW_PluginBase):
         device_id = device_info.device.id_
         client = devmgr.client_by_id(device_id)
         if client is None:
-            raise Exception(_('Failed to create a client for this device.') + '\n' +
-                            _('Make sure it is in the correct state.'))
+            raise UserFacingException(_('Failed to create a client for this device.') + '\n' +
+                                      _('Make sure it is in the correct state.'))
         # fixme: we should use: client.handler = wizard
         client.handler = self.create_handler(wizard)
         if not device_info.initialized:
@@ -289,7 +312,8 @@ class KeepKeyPlugin(HW_PluginBase):
         client = self.get_client(keystore)
         inputs = self.tx_inputs(tx, True)
         outputs = self.tx_outputs(keystore.get_derivation(), tx)
-        signatures = client.sign_tx(self.get_coin_name(), inputs, outputs, lock_time=tx.locktime)[0]
+        signatures = client.sign_tx(self.get_coin_name(), inputs, outputs,
+                                    lock_time=tx.locktime, version=tx.version)[0]
         signatures = [(bh2u(x) + '01') for x in signatures]
         tx.update_signatures(signatures)
 

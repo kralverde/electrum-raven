@@ -6,8 +6,9 @@ dist/
 tmp/
 *.egg/
 contrib/pyinstaller/
-Electrum_MONA.egg-info/
+Electrum_RVN.egg-info/
 locale/
+electrum/locale/
 .devlocaltmp/
 *_trial_temp
 packages
@@ -18,7 +19,6 @@ bin/
 .idea
 
 # icons
-electrum/gui/qt/icons_rc.py
 electrum/gui/kivy/theming/light-0.png
 electrum/gui/kivy/theming/light.atlas
 

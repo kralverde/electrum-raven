@@ -85,4 +85,4 @@ dmg dmg Electrum_uncompressed.dmg electrum-rvn-$VERSION.dmg || fail "Unable to c
 rm Electrum_uncompressed.dmg
 
 echo "Done."
-md5sum electrum-rvn-$VERSION.dmg
+sha256sum electrum-rvn-$VERSION.dmg

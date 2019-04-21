@@ -20,7 +20,7 @@ folder.
 2. Build image
 
     ```
-    $ sudo docker build --no-cache -t electrum-rvn-wine-builder-img contrib/build-wine/docker
+    $ sudo docker build -t electrum-wine-builder-img contrib/build-wine/docker
     ```
 
     Note: see [this](https://stackoverflow.com/a/40516974/7499128) if having dns problems
@@ -35,15 +35,15 @@ folder.
         rm -rf $FRESH_CLONE && \
         mkdir -p $FRESH_CLONE && \
         cd $FRESH_CLONE  && \
-        git clone https://github.com/traysi/electrum-raven.git && \
+        git clone https://github.com/standard-error/electrum-raven.git && \
         cd electrum
     ```
 
     And then build from this directory:
     ```
     $ git checkout $REV
-    $ sudo docker run \
-        --name electrum-rvn-wine-builder-cont \
+    $ sudo docker run -it \
+        --name electrum-wine-builder-cont \
         -v $PWD:/opt/wine64/drive_c/electrum-rvn \
         --rm \
         --workdir /opt/wine64/drive_c/electrum-rvn/contrib/build-wine \
