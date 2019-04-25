@@ -151,6 +151,16 @@ class Bittrex(ExchangeBase):
             return {ccy: Decimal(json1['result']['Last'])*Decimal(json2['last'])}
         return {ccy: Decimal(json1['result']['Last'])}
 
+class Binance(ExchangeBase):
+    async def get_rates(self, ccy):
+        json1 = await self.get_json('api.binance.com', '/api/v3/avgPrice?symbol=RVNBTC')
+        if ccy != "BTC":
+            json2 = await self.get_json('apiv2.bitcoinaverage.com', '/indices/global/ticker/BTC%s' % ccy)
+            return {ccy: Decimal(json1['price'])*Decimal(json2['last'])}
+        return {ccy: Decimal(json1['price'])}
+        
+
+        
 def dictinvert(d):
     inv = {}
     for k, vlist in d.items():
