@@ -22,7 +22,8 @@
 # SOFTWARE.
 import os
 import threading
-from typing import Optional, Dict
+import sys
+from typing import Optional, Dict, Mapping, Sequence
 
 from . import util
 from .bitcoin import hash_encode, int_to_hex, rev_hex
@@ -38,9 +39,10 @@ DGW_PASTBLOCKS = 180
 
 try:
     import x16r_hash
+    import x16rv2_hash
 except ImportError as e:
-    sys.exit("x16r module is required")
-
+    sys.exit("x16r and x16rv2 modules are required")
+	
 
 class MissingHeader(Exception):
     pass
@@ -72,17 +74,26 @@ def deserialize_header(s: bytes, height: int) -> dict:
     h['nonce'] = hex_to_int(s[76:80])
     h['block_height'] = height
     return h
-
+	
 def hash_header(header: dict) -> str:
+    if constants.net.TESTNET:
+       X16Rv2ActivationTS=1567533600
+    else:	
+       X16Rv2ActivationTS=1569945600
     if header is None:
         return '0' * 64
     if header.get('prev_block_hash') is None:
         header['prev_block_hash'] = '00'*32
-    return hash_raw_header(serialize_header(header))
-
+    if header['timestamp'] >= X16Rv2ActivationTS:
+       return hash_raw_header_v2(serialize_header(header))
+    else:
+       return hash_raw_header(serialize_header(header))
 
 def hash_raw_header(header: str) -> str:
     return hash_encode(x16r_hash.getPoWHash(bfh(header)))
+	
+def hash_raw_header_v2(header: str) -> str:
+    return hash_encode(x16rv2_hash.getPoWHash(bfh(header)))
 
 
 blockchains = {}  # type: Dict[int, Blockchain]
