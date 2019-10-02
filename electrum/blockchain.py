@@ -208,7 +208,12 @@ class Blockchain(util.PrintError):
         bits = self.convbits(target)
         if bits != header.get('bits'):
             raise Exception("bits mismatch: %s vs %s" % (bits, header.get('bits')))
-        _powhash = rev_hex(bh2u(x16r_hash.getPoWHash(bfh(serialize_header(header)))))
+        X16Rv2ActivationTS=1569945600
+        if header['timestamp'] >= X16Rv2ActivationTS:
+           hash_func = x16rv2_hash
+        else:
+           hash_func = x16r_hash
+        _powhash = rev_hex(bh2u(hash_func.getPoWHash(bfh(serialize_header(header)))))
         if int('0x' + _powhash, 16) > target:
             raise Exception("insufficient proof of work: %s vs target %s" % (int('0x' + _powhash, 16), target))
 
