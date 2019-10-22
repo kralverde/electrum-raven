@@ -20,10 +20,10 @@ FEE_DEPTH_TARGETS = [10000000, 5000000, 2000000, 1000000, 500000, 200000, 100000
 # satoshi per kbyte
 FEERATE_MAX_DYNAMIC = 1000000*1000
 FEERATE_WARNING_HIGH_FEE = 600000*1000
-FEERATE_FALLBACK_STATIC_FEE = 1000*1000
-FEERATE_DEFAULT_RELAY = 1000*1000
-FEERATE_STATIC_VALUES = [1000*1000, 1250*1000, 1500*1000, 2000*1000, 2500*1000, 3000*1000,
-                         4000*1000, 5000*1000, 7500*1000, 10000*1000]
+FEERATE_FALLBACK_STATIC_FEE = 1000*50
+FEERATE_DEFAULT_RELAY = 1000
+FEERATE_STATIC_VALUES = [1000, 2500, 5000, 10000, 25000, 50000,
+                         1000000, 2500000, 5000000, 10000000]
 
 config = None
 
@@ -375,7 +375,7 @@ class SimpleConfig(PrintError):
         l = list(self.fee_estimates.items()) + [(1, self.eta_to_fee(4))]
         dist = map(lambda x: (x[0], abs(x[1] - fee_per_kb)), l)
         min_target, min_value = min(dist, key=operator.itemgetter(1))
-        if fee_per_kb < self.fee_estimates.get(25)/2:
+        if fee_per_kb*1000 < self.fee_estimates.get(25)/2:
             min_target = -1
         return min_target
 
