@@ -575,6 +575,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         help_menu.addAction(_("&Report Bug"), self.show_report_bug)
         help_menu.addSeparator()
         help_menu.addAction(_("&Donate to server"), self.donate_to_server)
+        help_menu.addAction(_("&Donate to developer"), self.donate_to_dev)
 
         self.setMenuBar(menubar)
 
@@ -585,6 +586,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             self.pay_to_URI('ravencoin:%s?message=donation for %s'%(d, host))
         else:
             self.show_error(_('No donation address for this server'))
+            
+    def donate_to_dev(self):
+        self.pay_to_URI('ravencoin:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS')
 
     def show_about(self):
         QMessageBox.about(self, "Electrum-rvn",
@@ -599,7 +603,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
     def show_report_bug(self):
         msg = ' '.join([
             _("Please report any bugs as issues on github:<br/>"),
-            "<a href=\"https://github.com/traysi/electrum-raven/issues\">https://github.com/traysi/electrum-raven/issues</a><br/><br/>",
+            "<a href=\"https://github.com/standard-error/electrum-raven/issues\">https://github.com/standard-error/electrum-raven/issues</a><br/><br/>",
             _("Before reporting a bug, upgrade to the most recent version of Electrum (latest release or git HEAD), and include the version number in your report."),
             _("Try to explain not only what the bug is, but how it occurs.")
          ])

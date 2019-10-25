@@ -10,7 +10,7 @@ Electrum-raven - Lightweight Ravencoin client
   Homepage: https://ravencoin.org/
 
 
-.. image:: https://minermore.com/images/ravencoin.svg
+.. image:: http://corvus.nbits.dev/raven.jpg
     :width: 100px
     :target: https://github.com/standard-error/electrum-raven
     :alt: Build Status
@@ -34,10 +34,9 @@ You can also install Electrum-raven on your system, by running these commands::
     source ~/pve/bin/activate
     git clone https://github.com/standard-error/electrum-raven
     cd electrum-raven
-    pip3 install x16r-hash
+    pip3 install x16r-hash x16rv2-hash pyqt5
     python3 -m pip install .[fast]
     pyrcc5 icons.qrc -o electrum/gui/qt/icons_rc.py
-    pip3 install pyqt5
     ./run_electrum
 
 Creating Binaries
