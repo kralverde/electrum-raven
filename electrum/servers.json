@@ -1,11 +1,5 @@
 {
-    "rvn.satoshi.org.uk": {
-        "pruning": "-",
-        "s": "50002",
-        "t": "50001",
-        "version": "1.3"
-    },
-    "electrum-rvn.minermore.com": {
+    "electrumx-rvn.nbits.dev": {
         "pruning": "-",
         "s": "50002",
         "t": "50001",

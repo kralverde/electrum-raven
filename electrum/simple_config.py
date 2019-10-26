@@ -18,12 +18,12 @@ FEE_ETA_TARGETS = [25, 10, 5, 2]
 FEE_DEPTH_TARGETS = [10000000, 5000000, 2000000, 1000000, 500000, 200000, 100000]
 
 # satoshi per kbyte
-FEERATE_MAX_DYNAMIC = 1000000
-FEERATE_WARNING_HIGH_FEE = 600000
-FEERATE_FALLBACK_STATIC_FEE = 1150
+FEERATE_MAX_DYNAMIC = 1000000*1000
+FEERATE_WARNING_HIGH_FEE = 600000*1000
+FEERATE_FALLBACK_STATIC_FEE = 1000*50
 FEERATE_DEFAULT_RELAY = 1000
-FEERATE_STATIC_VALUES = [1150, 1150, 1150, 1150, 1150, 1150,
-                         1150, 1150, 1150, 1150]
+FEERATE_STATIC_VALUES = [1000, 2500, 5000, 10000, 25000, 50000,
+                         1000000, 2500000, 5000000, 10000000]
 
 config = None
 
@@ -375,7 +375,7 @@ class SimpleConfig(PrintError):
         l = list(self.fee_estimates.items()) + [(1, self.eta_to_fee(4))]
         dist = map(lambda x: (x[0], abs(x[1] - fee_per_kb)), l)
         min_target, min_value = min(dist, key=operator.itemgetter(1))
-        if fee_per_kb < self.fee_estimates.get(25)/2:
+        if fee_per_kb*1000 < self.fee_estimates.get(25)/2:
             min_target = -1
         return min_target
 
@@ -474,7 +474,7 @@ class SimpleConfig(PrintError):
             return self.has_fee_etas()
 
     def is_dynfee(self):
-        return bool(self.get('dynamic_fees', False))
+        return bool(self.get('dynamic_fees', True))
 
     def use_mempool_fees(self):
         return bool(self.get('mempool_fees', False))
