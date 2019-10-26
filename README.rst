@@ -1,6 +1,10 @@
 Electrum-raven - Lightweight Ravencoin client
 =====================================
 
+.. image:: https://travis-ci.com/standard-error/electrum-raven.svg?branch=master
+    :target: https://travis-ci.com/standard-error/electrum-raven
+    :alt: Build Status
+
 ::
 
   Licence: MIT Licence
@@ -13,7 +17,7 @@ Electrum-raven - Lightweight Ravencoin client
 .. image:: http://corvus.nbits.dev/raven.jpg
     :width: 100px
     :target: https://github.com/standard-error/electrum-raven
-    :alt: Build Status
+    :alt: Ravencoin logo
 
 
 Getting started
