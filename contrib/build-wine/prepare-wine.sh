@@ -5,12 +5,8 @@ NSIS_FILENAME=nsis-3.04-setup.exe
 NSIS_URL=https://prdownloads.sourceforge.net/nsis/$NSIS_FILENAME?download
 NSIS_SHA256=4e1db5a7400e348b1b46a4a11b6d9557fd84368e4ad3d4bc4c1be636c89638aa
 
-LIB_GCC_FILENAME=libgcc-6.3.0-1-mingw32-dll-1.tar.xz
-LIB_GCC_URL=https://netix.dl.sourceforge.net/project/mingw/MinGW/Base/gcc/Version6/gcc-6.3.0/$LIB_GCC_FILENAME
-LIB_GCC_SHA256=8cbfa963f645cc0f81c08df2a3ecbcefc776606f0fb9db7a280d79f05209a1c3
-
 ZBAR_FILENAME=zbarw-20121031-setup.exe
-ZBAR_URL=https://astuteinternet.dl.sourceforge.net/project/zbarw/$ZBAR_FILENAME
+ZBAR_URL=https://sourceforge.net/projects/zbarw/files/$ZBAR_FILENAME/download
 ZBAR_SHA256=177e32b272fa76528a3af486b74e9cb356707be1c5ace4ed3fcee9723e2c2c02
 
 LIBUSB_FILENAME=libusb-1.0.22.7z
@@ -79,18 +75,6 @@ download_if_not_exist "$CACHEDIR/$LIBUSB_FILENAME" "$LIBUSB_URL"
 verify_hash "$CACHEDIR/$LIBUSB_FILENAME" "$LIBUSB_SHA256"
 7z x -olibusb "$CACHEDIR/$LIBUSB_FILENAME" -aoa
 cp libusb/MS32/dll/libusb-1.0.dll $WINEPREFIX/drive_c/$PYTHON_FOLDER/
-
-
-# install hash modules
-$PYTHON -m pip install x16r_hash
-$PYTHON -m pip install x16rv2_hash
-
-
-# copy from mingw for lyra2re2_hash
-#wget -q -O $LIB_GCC_FILENAME "$LIB_GCC_URL"
-#verify_hash $LIB_GCC_FILENAME $LIB_GCC_SHA256
-#tar Jxfv $LIB_GCC_FILENAME
-#cp bin/libgcc_s_dw2-1.dll $WINEPREFIX/drive_c/python$PYTHON_VERSION/Lib/site-packages/
 
 mkdir -p $WINEPREFIX/drive_c/tmp
 cp "$CACHEDIR/secp256k1/libsecp256k1.dll" $WINEPREFIX/drive_c/tmp/

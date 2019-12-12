@@ -6,7 +6,7 @@ Comment=Lightweight Ravencoin Client
 Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\" run_electrum %u"
 GenericName[en_US]=Ravencoin Wallet
 GenericName=Ravencoin Wallet
-Icon=electrum-raven
+Icon=electrum
 Name[en_US]=Electrum-raven Ravencoin Wallet
 Name=Electrum Ravencoin Wallet
 Categories=Finance;Network;
@@ -17,5 +17,5 @@ MimeType=x-scheme-handler/ravencoin;
 Actions=Testnet;
 
 [Desktop Action Testnet]
-Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\"; electrum-raven --testnet %u"
+Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\"; run_electrum --testnet %u"
 Name=Testnet mode

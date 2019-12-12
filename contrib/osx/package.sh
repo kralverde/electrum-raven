@@ -17,7 +17,7 @@ export PATH=$PATH:~/bin
 . $(dirname "$0")/base.sh
 
 if [ -z "$1" ]; then
-    echo "Usage: $0 Electrum-RVN.app"
+    echo "Usage: $0 Electrum.app"
     exit -127
 fi
 
@@ -73,7 +73,7 @@ ${genisoimage} \
     -D \
     -l \
     -probe \
-    -V "Electrum-RVN" \
+    -V "Electrum" \
     -no-pad \
     -r \
     -dir-mode 0755 \
@@ -85,4 +85,4 @@ dmg dmg Electrum_uncompressed.dmg electrum-rvn-$VERSION.dmg || fail "Unable to c
 rm Electrum_uncompressed.dmg
 
 echo "Done."
-sha256sum electrum-$VERSION.dmg
+sha256sum electrum-rvn-$VERSION.dmg

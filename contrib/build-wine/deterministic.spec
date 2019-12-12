@@ -3,7 +3,6 @@
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_dynamic_libs
 
 import sys
-import os
 for i, x in enumerate(sys.argv):
     if x == '--name':
         cmdline_name = sys.argv[i+1]
@@ -14,11 +13,6 @@ else:
 PYHOME = 'c:/python3'
 
 home = 'C:\\electrum\\'
-
-if os.path.exists("C:/Program Files (x86)"):
-    zbardir = 'C:\\Program Files (x86)\\'
-else:
-    zbardir = 'C:\\Program Files\\'
 
 # see https://github.com/pyinstaller/pyinstaller/issues/2005
 hiddenimports = []
