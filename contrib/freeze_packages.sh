@@ -1,7 +1,9 @@
 #!/bin/bash
 # Run this after a new release to update dependencies
 
-venv_dir=~/.electrum-rvn-venv
+set -e
+
+venv_dir=~/.electrum-venv
 contrib=$(dirname "$0")
 
 which virtualenv > /dev/null 2>&1 || { echo "Please install virtualenv" && exit 1; }

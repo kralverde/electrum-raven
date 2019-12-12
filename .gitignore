@@ -5,9 +5,8 @@ build/
 dist/
 tmp/
 *.egg/
-contrib/pyinstaller/
-Electrum_MONA.egg-info/
-locale/
+Electrum-RVN.egg-info/
+electrum/locale/
 .devlocaltmp/
 *_trial_temp
 packages
@@ -18,7 +17,6 @@ bin/
 .idea
 
 # icons
-electrum/gui/qt/icons_rc.py
 electrum/gui/kivy/theming/light-0.png
 electrum/gui/kivy/theming/light.atlas
 
@@ -27,3 +25,10 @@ electrum/gui/kivy/theming/light.atlas
 .cache/
 .coverage
 .pytest_cache
+
+# build workspaces
+contrib/build-wine/tmp/
+contrib/build-wine/fresh_clone/
+contrib/build-linux/appimage/build/
+contrib/build-linux/appimage/.cache/
+contrib/android_debug.keystore

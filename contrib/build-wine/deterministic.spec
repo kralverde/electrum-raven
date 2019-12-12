@@ -11,10 +11,9 @@ for i, x in enumerate(sys.argv):
 else:
     raise Exception('no name')
 
-PYTHON_VERSION = '3.6.6'
-PYHOME = 'c:/python' + PYTHON_VERSION
+PYHOME = 'c:/python3'
 
-home = 'C:\\electrum-rvn\\'
+home = 'C:\\electrum\\'
 
 if os.path.exists("C:/Program Files (x86)"):
     zbardir = 'C:\\Program Files (x86)\\'
@@ -29,6 +28,12 @@ hiddenimports += collect_submodules('btchip')
 hiddenimports += collect_submodules('keepkeylib')
 hiddenimports += collect_submodules('websocket')
 hiddenimports += collect_submodules('ckcc')
+hiddenimports += ['PyQt5.QtPrintSupport']  # needed by Revealer
+
+# safetlib imports PyQt5.Qt.  We use a local updated copy of pinmatrix.py until they
+# release a new version that includes https://github.com/archos-safe-t/python-safet/commit/b1eab3dba4c04fdfc1fcf17b66662c28c5f2380e
+hiddenimports.remove('safetlib.qt.pinmatrix')
+
 
 # Add libusb binary
 binaries = [(PYHOME+"/libusb-1.0.dll", ".")]
@@ -43,7 +48,8 @@ datas = [
     (home+'electrum/wordlist/english.txt', 'electrum/wordlist'),
     (home+'electrum/locale', 'electrum/locale'),
     (home+'electrum/plugins', 'electrum/plugins'),
-    (zbardir+'ZBar\\bin\\', '.'),
+    ('C:\\Program Files (x86)\\ZBar\\bin\\', '.'),
+    (home+'electrum/gui/icons', 'electrum/gui/icons'),
 ]
 datas += collect_data_files('trezorlib')
 datas += collect_data_files('safetlib')
@@ -63,7 +69,6 @@ a = Analysis([home+'run_electrum',
               home+'electrum/commands.py',
               home+'electrum/plugins/cosigner_pool/qt.py',
               home+'electrum/plugins/email_requests/qt.py',
-              home+'electrum/plugins/trezor/client.py',
               home+'electrum/plugins/trezor/qt.py',
               home+'electrum/plugins/safe_t/client.py',
               home+'electrum/plugins/safe_t/qt.py',
@@ -85,6 +90,24 @@ for d in a.datas:
         a.datas.remove(d)
         break
 
+# Strip out parts of Qt that we never use. Reduces binary size by tens of MBs. see #4815
+qt_bins2remove=('qt5web', 'qt53d', 'qt5game', 'qt5designer', 'qt5quick',
+                'qt5location', 'qt5test', 'qt5xml', r'pyqt5\qt\qml\qtquick')
+print("Removing Qt binaries:", *qt_bins2remove)
+for x in a.binaries.copy():
+    for r in qt_bins2remove:
+        if x[0].lower().startswith(r):
+            a.binaries.remove(x)
+            print('----> Removed x =', x)
+
+qt_data2remove=(r'pyqt5\qt\translations\qtwebengine_locales', )
+print("Removing Qt datas:", *qt_data2remove)
+for x in a.datas.copy():
+    for r in qt_data2remove:
+        if x[0].lower().startswith(r):
+            a.datas.remove(x)
+            print('----> Removed x =', x)
+
 # hotfix for #3171 (pre-Win10 binaries)
 a.binaries = [x for x in a.binaries if not x[1].lower().startswith(r'c:\windows')]
 
@@ -99,11 +122,11 @@ exe_standalone = EXE(
     a.scripts,
     a.binaries,
     a.datas,
-    name=os.path.join('build\\pyi.win32\\electrum-rvn', cmdline_name + ".exe"),
+    name=os.path.join('build\\pyi.win32\\electrum', cmdline_name + ".exe"),
     debug=False,
     strip=None,
     upx=False,
-    icon=home+'icons/electrum.ico',
+    icon=home+'electrum/gui/icons/electrum.ico',
     console=False)
     # console=True makes an annoying black box pop up, but it does make Electrum output command line commands, with this turned off no output will be given but commands can still be used
 
@@ -112,11 +135,11 @@ exe_portable = EXE(
     a.scripts,
     a.binaries,
     a.datas + [ ('is_portable', 'README.md', 'DATA' ) ],
-    name=os.path.join('build\\pyi.win32\\electrum-rvn', cmdline_name + "-portable.exe"),
+    name=os.path.join('build\\pyi.win32\\electrum', cmdline_name + "-portable.exe"),
     debug=False,
     strip=None,
     upx=False,
-    icon=home+'icons/electrum.ico',
+    icon=home+'electrum/gui/icons/electrum.ico',
     console=False)
 
 #####
@@ -126,11 +149,11 @@ exe_dependent = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name=os.path.join('build\\pyi.win32\\electrum-rvn', cmdline_name),
+    name=os.path.join('build\\pyi.win32\\electrum', cmdline_name),
     debug=False,
     strip=None,
     upx=False,
-    icon=home+'icons/electrum.ico',
+    icon=home+'electrum/gui/icons/electrum.ico',
     console=False)
 
 coll = COLLECT(
@@ -141,6 +164,6 @@ coll = COLLECT(
     strip=None,
     upx=True,
     debug=False,
-    icon=home+'icons/electrum.ico',
+    icon=home+'electrum/gui/icons/electrum.ico',
     console=False,
-    name=os.path.join('dist', 'electrum-rvn'))
+    name=os.path.join('dist', 'electrum'))

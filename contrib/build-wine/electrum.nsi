@@ -7,7 +7,7 @@
 ;Variables
 
   !define PRODUCT_NAME "Electrum-RVN"
-  !define PRODUCT_WEB_SITE "https://github.com/traysi/electrum-raven"
+  !define PRODUCT_WEB_SITE "https://github.com/standard-error/electrum-raven"
   !define PRODUCT_PUBLISHER "Electrum Raven"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 
@@ -72,7 +72,7 @@
   !define MUI_ABORTWARNING
   !define MUI_ABORTWARNING_TEXT "Are you sure you wish to abort the installation of ${PRODUCT_NAME}?"
   
-  !define MUI_ICON "c:\electrum-rvn\icons\electrum.ico"
+  !define MUI_ICON "c:\electrum\electrum\gui\icons\electrum.ico"
   
 ;--------------------------------
 ;Pages
@@ -110,8 +110,8 @@ Section
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\*.*"
   
   ;Files to pack into the installer
-  File /r "dist\electrum-rvn\*.*"
-  File "c:\electrum-rvn\icons\electrum.ico"
+  File /r "dist\electrum\*.*"
+  File "c:\electrum\electrum\gui\icons\electrum.ico"
 
   ;Store installation folder
   WriteRegStr HKCU "Software\${PRODUCT_NAME}" "" $INSTDIR

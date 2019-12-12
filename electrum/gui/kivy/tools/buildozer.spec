@@ -19,7 +19,11 @@ source.include_exts = py,png,jpg,kv,atlas,ttf,txt,gif,pem,mo,vs,fs,json
 source.exclude_exts = spec
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = bin, build, dist, contrib, electrum/gui/qt, electrum/gui/kivy/tools, electrum/gui/kivy/theming/light
+source.exclude_dirs = bin, build, dist, contrib,
+    electrum/tests,
+    electrum/gui/qt,
+    electrum/gui/kivy/tools,
+    electrum/gui/kivy/theming/light
 # (list) List of exclusions using pattern matching
 source.exclude_patterns = Makefile,setup*
 
@@ -31,14 +35,21 @@ version.filename = %(source.dir)s/electrum/version.py
 #version = 1.9.8
 
 # (list) Application requirements
-requirements = python3crystax==3.6, android, openssl, plyer, kivy==master, libsecp256k1
+requirements =
+    python3,
+    android,
+    openssl,
+    plyer,
+    kivy==82d561d62577757d478df52173610f925c05ecab,
+    libffi,
+    libsecp256k1
 
 # (str) Presplash of the application
 #presplash.filename = %(source.dir)s/gui/kivy/theming/splash.png
-presplash.filename = %(source.dir)s/icons/electrum_presplash.png
+presplash.filename = %(source.dir)s/electrum/gui/icons/electrum_presplash.png
 
 # (str) Icon of the application
-icon.filename = %(source.dir)s/icons/electrum_launcher.png
+icon.filename = %(source.dir)s/electrum/gui/icons/electrum_launcher.png
 
 # (str) Supported orientation (one of landscape, portrait or all)
 orientation = portrait
@@ -52,28 +63,31 @@ fullscreen = False
 #
 
 # (list) Permissions
-android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, CAMERA
+android.permissions = INTERNET, CAMERA
 
 # (int) Android API to use
-#android.api = 14
+android.api = 28
 
-# (int) Minimum API required (8 = Android 2.2 devices)
-#android.minapi = 8
-
-# (int) Android SDK version to use
-#android.sdk = 21
+# (int) Minimum API required. You will need to set the android.ndk_api to be as low as this value.
+android.minapi = 21
 
 # (str) Android NDK version to use
-#android.ndk = 9
+android.ndk = 17c
+
+# (int) Android NDK API to use (optional). This is the minimum API your app will support.
+android.ndk_api = 21
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
-android.ndk_path = /opt/crystax-ndk-10.3.2
+android.ndk_path = /opt/android/android-ndk
 
 # (str) Android SDK directory (if empty, it will be automatically downloaded.)
-#android.sdk_path =
+android.sdk_path = /opt/android/android-sdk
+
+# (str) ANT directory (if empty, it will be automatically downloaded.)
+#android.ant_path =
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.renpy.android.PythonActivity
@@ -117,6 +131,9 @@ android.manifest.launch_mode = singleTask
 # Don't forget to add the WAKE_LOCK permission if you set this to True
 #android.wakelock = False
 
+# (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
+android.arch = armeabi-v7a
+
 # (list) Android application meta-data to set (key=value format)
 #android.meta_data =
 
@@ -126,8 +143,26 @@ android.manifest.launch_mode = singleTask
 
 android.whitelist = lib-dynload/_csv.so
 
-# local version that merges branch 866
+
+#
+# Python for android (p4a) specific
+#
+
+# (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 p4a.source_dir = /opt/python-for-android
+
+# (str) The directory in which python-for-android should look for your own build recipes (if any)
+#p4a.local_recipes =
+
+# (str) Filename to the hook for p4a
+#p4a.hook =
+
+# (str) Bootstrap to use for android builds
+# p4a.bootstrap = sdl2
+
+# (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
+#p4a.port =
+
 
 #
 # iOS specific
@@ -145,7 +180,7 @@ p4a.source_dir = /opt/python-for-android
 [buildozer]
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
-log_level = 2
+log_level = 1
 
 
 # -----------------------------------------------------------------------------

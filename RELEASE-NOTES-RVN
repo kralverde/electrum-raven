@@ -1,0 +1,8 @@
+# Release 3.3.8-rvn1 - (Dec XX, 2019)
+ * support x16rv2 fork
+ * base update to Electrum 3.3.8 (many changes - see RELEASE-NOTES)
+ * add built in log viewer
+ * support wider range of fees in preparation for increase (currently on testnet)
+ * now require 60 confs before transaction considered complete (previously 6)
+ * add Binance as exchange rate source
+ * removed some bitcoin specific plugins
