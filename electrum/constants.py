@@ -26,6 +26,8 @@
 import os
 import json
 
+from .util import inv_dict
+
 
 def read_json(filename, default):
     path = os.path.join(os.path.dirname(__file__), filename)
@@ -35,6 +37,10 @@ def read_json(filename, default):
     except:
         r = default
     return r
+
+
+GIT_REPO_URL = "https://github.com/standard-error/electrum-raven"
+GIT_REPO_ISSUES_URL = "https://github.com/standard-error/electrum-raven/issues"
 
 
 class AbstractNet:
@@ -64,6 +70,7 @@ class BitcoinMainnet(AbstractNet):
         'p2wpkh':      0x04b2430c,  # zprv
         'p2wsh':       0x02aa7a99,  # Zprv
     }
+    XPRV_HEADERS_INV = inv_dict(XPRV_HEADERS)
     XPUB_HEADERS = {
         'standard':    0x0488b21e,  # xpub
         'p2wpkh-p2sh': 0x049d7cb2,  # ypub
@@ -71,6 +78,7 @@ class BitcoinMainnet(AbstractNet):
         'p2wpkh':      0x04b24746,  # zpub
         'p2wsh':       0x02aa7ed3,  # Zpub
     }
+    XPUB_HEADERS_INV = inv_dict(XPUB_HEADERS)
     BIP44_COIN_TYPE = 175
 
 
@@ -94,6 +102,7 @@ class BitcoinTestnet(AbstractNet):
         'p2wpkh':      0x045f18bc,  # vprv
         'p2wsh':       0x02575048,  # Vprv
     }
+    XPRV_HEADERS_INV = inv_dict(XPRV_HEADERS)
     XPUB_HEADERS = {
         'standard':    0x043587cf,  # tpub
         'p2wpkh-p2sh': 0x044a5262,  # upub
@@ -101,6 +110,7 @@ class BitcoinTestnet(AbstractNet):
         'p2wpkh':      0x045f1cf6,  # vpub
         'p2wsh':       0x02575483,  # Vpub
     }
+    XPUB_HEADERS_INV = inv_dict(XPUB_HEADERS)
     BIP44_COIN_TYPE = 175
 
 

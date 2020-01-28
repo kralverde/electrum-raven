@@ -1,18 +1,34 @@
+import asyncio
 import os.path
 import time
 import sys
 import platform
 import queue
-from functools import partial
-from typing import NamedTuple, Callable, Optional
+import traceback
+import os
+import webbrowser
 
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from functools import partial, lru_cache
+from typing import NamedTuple, Callable, Optional, TYPE_CHECKING, Union, List, Dict
 
-from electrum.i18n import _
-from electrum.util import FileImportFailed, FileExportFailed
+from PyQt5.QtGui import (QFont, QColor, QCursor, QPixmap, QStandardItem,
+                         QPalette, QIcon, QFontMetrics)
+from PyQt5.QtCore import (Qt, QPersistentModelIndex, QModelIndex, pyqtSignal,
+                          QCoreApplication, QItemSelectionModel, QThread,
+                          QSortFilterProxyModel, QSize, QLocale)
+from PyQt5.QtWidgets import (QPushButton, QLabel, QMessageBox, QHBoxLayout,
+                             QAbstractItemView, QVBoxLayout, QLineEdit,
+                             QStyle, QDialog, QGroupBox, QButtonGroup, QRadioButton,
+                             QFileDialog, QWidget, QToolButton, QTreeView, QPlainTextEdit,
+                             QHeaderView, QApplication, QToolTip, QTreeWidget, QStyledItemDelegate)
+
+from electrum.i18n import _, languages
+from electrum.util import (FileImportFailed, FileExportFailed,
+                           resource_path)
 from electrum.paymentrequest import PR_UNPAID, PR_PAID, PR_EXPIRED
+
+if TYPE_CHECKING:
+    from .main_window import ElectrumWindow
 
 
 if platform.system() == 'Windows':
@@ -26,9 +42,9 @@ else:
 dialogs = []
 
 pr_icons = {
-    PR_UNPAID:":icons/unpaid.png",
-    PR_PAID:":icons/confirmed.png",
-    PR_EXPIRED:":icons/expired.png"
+    PR_UNPAID:"unpaid.png",
+    PR_PAID:"confirmed.png",
+    PR_EXPIRED:"expired.png"
 }
 
 pr_tooltips = {
@@ -44,19 +60,6 @@ expiration_values = [
     (_('Never'), None)
 ]
 
-
-class Timer(QThread):
-    stopped = False
-    timer_signal = pyqtSignal()
-
-    def run(self):
-        while not self.stopped:
-            self.timer_signal.emit()
-            time.sleep(0.5)
-
-    def stop(self):
-        self.stopped = True
-        self.wait()
 
 class EnterButton(QPushButton):
     def __init__(self, text, func):
@@ -91,6 +94,7 @@ class WWLabel(QLabel):
     def __init__ (self, text="", parent=None):
         QLabel.__init__(self, text, parent)
         self.setWordWrap(True)
+        self.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
 
 class HelpLabel(QLabel):
@@ -102,7 +106,10 @@ class HelpLabel(QLabel):
         self.font = QFont()
 
     def mouseReleaseEvent(self, x):
-        QMessageBox.information(self, 'Help', self.help_text)
+        custom_message_box(icon=QMessageBox.Information,
+                           parent=self,
+                           title=_('Help'),
+                           text=self.help_text)
 
     def enterEvent(self, event):
         self.font.setUnderline(True)
@@ -122,11 +129,15 @@ class HelpButton(QPushButton):
         QPushButton.__init__(self, '?')
         self.help_text = text
         self.setFocusPolicy(Qt.NoFocus)
-        self.setFixedWidth(20)
+        self.setFixedWidth(round(2.2 * char_width_in_lineedit()))
         self.clicked.connect(self.onclick)
 
     def onclick(self):
-        QMessageBox.information(self, 'Help', self.help_text)
+        custom_message_box(icon=QMessageBox.Information,
+                           parent=self,
+                           title=_('Help'),
+                           text=self.help_text,
+                           rich_text=True)
 
 
 class InfoButton(QPushButton):
@@ -134,11 +145,15 @@ class InfoButton(QPushButton):
         QPushButton.__init__(self, 'Info')
         self.help_text = text
         self.setFocusPolicy(Qt.NoFocus)
-        self.setFixedWidth(60)
+        self.setFixedWidth(6 * char_width_in_lineedit())
         self.clicked.connect(self.onclick)
 
     def onclick(self):
-        QMessageBox.information(self, 'Info', self.help_text)
+        custom_message_box(icon=QMessageBox.Information,
+                           parent=self,
+                           title=_('Info'),
+                           text=self.help_text,
+                           rich_text=True)
 
 
 class Buttons(QHBoxLayout):
@@ -194,11 +209,15 @@ class MessageBoxMixin(object):
     def top_level_window(self, test_func=None):
         return self.top_level_window_recurse(test_func)
 
-    def question(self, msg, parent=None, title=None, icon=None):
+    def question(self, msg, parent=None, title=None, icon=None, **kwargs) -> bool:
         Yes, No = QMessageBox.Yes, QMessageBox.No
-        return self.msg_box(icon or QMessageBox.Question,
-                            parent, title or '',
-                            msg, buttons=Yes|No, defaultButton=No) == Yes
+        return Yes == self.msg_box(icon=icon or QMessageBox.Question,
+                                   parent=parent,
+                                   title=title or '',
+                                   text=msg,
+                                   buttons=Yes|No,
+                                   defaultButton=No,
+                                   **kwargs)
 
     def show_warning(self, msg, parent=None, title=None, **kwargs):
         return self.msg_box(QMessageBox.Warning, parent,
@@ -216,23 +235,43 @@ class MessageBoxMixin(object):
         return self.msg_box(QMessageBox.Information, parent,
                             title or _('Information'), msg, **kwargs)
 
-    def msg_box(self, icon, parent, title, text, buttons=QMessageBox.Ok,
-                defaultButton=QMessageBox.NoButton, rich_text=False):
+    def msg_box(self, icon, parent, title, text, *, buttons=QMessageBox.Ok,
+                defaultButton=QMessageBox.NoButton, rich_text=False,
+                checkbox=None):
         parent = parent or self.top_level_window()
-        if type(icon) is QPixmap:
-            d = QMessageBox(QMessageBox.Information, title, str(text), buttons, parent)
-            d.setIconPixmap(icon)
-        else:
-            d = QMessageBox(icon, title, str(text), buttons, parent)
-        d.setWindowModality(Qt.WindowModal)
-        d.setDefaultButton(defaultButton)
-        if rich_text:
-            d.setTextInteractionFlags(Qt.TextSelectableByMouse| Qt.LinksAccessibleByMouse)
-            d.setTextFormat(Qt.RichText)
-        else:
-            d.setTextInteractionFlags(Qt.TextSelectableByMouse)
-            d.setTextFormat(Qt.PlainText)
-        return d.exec_()
+        return custom_message_box(icon=icon,
+                                  parent=parent,
+                                  title=title,
+                                  text=text,
+                                  buttons=buttons,
+                                  defaultButton=defaultButton,
+                                  rich_text=rich_text,
+                                  checkbox=checkbox)
+
+
+def custom_message_box(*, icon, parent, title, text, buttons=QMessageBox.Ok,
+                       defaultButton=QMessageBox.NoButton, rich_text=False,
+                       checkbox=None):
+    if type(icon) is QPixmap:
+        d = QMessageBox(QMessageBox.Information, title, str(text), buttons, parent)
+        d.setIconPixmap(icon)
+    else:
+        d = QMessageBox(icon, title, str(text), buttons, parent)
+    d.setWindowModality(Qt.WindowModal)
+    d.setDefaultButton(defaultButton)
+    if rich_text:
+        d.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        # set AutoText instead of RichText
+        # AutoText lets Qt figure out whether to render as rich text.
+        # e.g. if text is actually plain text and uses "\n" newlines;
+        #      and we set RichText here, newlines would be swallowed
+        d.setTextFormat(Qt.AutoText)
+    else:
+        d.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        d.setTextFormat(Qt.PlainText)
+    if checkbox is not None:
+        d.setCheckBox(checkbox)
+    return d.exec_()
 
 class WindowModalDialog(QDialog, MessageBoxMixin):
     '''Handy wrapper; window modal dialogs are better for our multi-window
@@ -400,156 +439,161 @@ def filename_field(parent, config, defaultname, select_msg):
     return vbox, filename_e, b1
 
 class ElectrumItemDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
-        return self.parent().createEditor(parent, option, index)
+    def __init__(self, tv):
+        super().__init__(tv)
+        self.tv = tv
+        self.opened = None
+        def on_closeEditor(editor: QLineEdit, hint):
+            self.opened = None
+        def on_commitData(editor: QLineEdit):
+            new_text = editor.text()
+            idx = QModelIndex(self.opened)
+            row, col = idx.row(), idx.column()
+            _prior_text, user_role = self.tv.text_txid_from_coordinate(row, col)
+            # check that we didn't forget to set UserRole on an editable field
+            assert user_role is not None, (row, col)
+            self.tv.on_edited(idx, user_role, new_text)
+        self.closeEditor.connect(on_closeEditor)
+        self.commitData.connect(on_commitData)
 
-class MyTreeWidget(QTreeWidget):
+    def createEditor(self, parent, option, idx):
+        self.opened = QPersistentModelIndex(idx)
+        return super().createEditor(parent, option, idx)
 
-    def __init__(self, parent, create_menu, headers, stretch_column=None,
-                 editable_columns=None):
-        QTreeWidget.__init__(self, parent)
+class MyTreeView(QTreeView):
+
+    def __init__(self, parent: 'ElectrumWindow', create_menu, stretch_column=None, editable_columns=None):
+        super().__init__(parent)
         self.parent = parent
         self.config = self.parent.config
         self.stretch_column = stretch_column
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(create_menu)
         self.setUniformRowHeights(True)
-        # extend the syntax for consistency
-        self.addChild = self.addTopLevelItem
-        self.insertChild = self.insertTopLevelItem
-
-        self.icon_cache = IconCache()
 
         # Control which columns are editable
-        self.editor = None
-        self.pending_update = False
         if editable_columns is None:
             editable_columns = {stretch_column}
         else:
             editable_columns = set(editable_columns)
         self.editable_columns = editable_columns
         self.setItemDelegate(ElectrumItemDelegate(self))
-        self.itemDoubleClicked.connect(self.on_doubleclick)
-        self.update_headers(headers)
         self.current_filter = ""
 
         self.setRootIsDecorated(False)  # remove left margin
         self.toolbar_shown = False
 
-    def update_headers(self, headers):
-        self.setColumnCount(len(headers))
-        self.setHeaderLabels(headers)
-        self.header().setStretchLastSection(False)
-        for col in range(len(headers)):
-            sm = QHeaderView.Stretch if col == self.stretch_column else QHeaderView.ResizeToContents
-            self.header().setSectionResizeMode(col, sm)
+        # When figuring out the size of columns, Qt by default looks at
+        # the first 1000 rows (at least if resize mode is QHeaderView.ResizeToContents).
+        # This would be REALLY SLOW, and it's not perfect anyway.
+        # So to speed the UI up considerably, set it to
+        # only look at as many rows as currently visible.
+        self.header().setResizeContentsPrecision(0)
 
-    def editItem(self, item, column):
-        if column in self.editable_columns:
-            try:
-                self.editing_itemcol = (item, column, item.text(column))
-                # Calling setFlags causes on_changed events for some reason
-                item.setFlags(item.flags() | Qt.ItemIsEditable)
-                QTreeWidget.editItem(self, item, column)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            except RuntimeError:
-                # (item) wrapped C/C++ object has been deleted
-                pass
+    def set_editability(self, items):
+        for idx, i in enumerate(items):
+            i.setEditable(idx in self.editable_columns)
+
+    def selected_in_column(self, column: int):
+        items = self.selectionModel().selectedIndexes()
+        return list(x for x in items if x.column() == column)
+
+    def current_item_user_role(self, col) -> Optional[QStandardItem]:
+        idx = self.selectionModel().currentIndex()
+        idx = idx.sibling(idx.row(), col)
+        item = self.model().itemFromIndex(idx)
+        if item:
+            return item.data(Qt.UserRole)
+
+    def set_current_idx(self, set_current: QPersistentModelIndex):
+        if set_current:
+            assert isinstance(set_current, QPersistentModelIndex)
+            assert set_current.isValid()
+            self.selectionModel().select(QModelIndex(set_current), QItemSelectionModel.SelectCurrent)
+
+    def update_headers(self, headers: Union[List[str], Dict[int, str]]):
+        # headers is either a list of column names, or a dict: (col_idx->col_name)
+        if not isinstance(headers, dict):  # convert to dict
+            headers = dict(enumerate(headers))
+        col_names = [headers[col_idx] for col_idx in sorted(headers.keys())]
+        model = self.model()
+        model.setHorizontalHeaderLabels(col_names)
+        self.header().setStretchLastSection(False)
+        for col_idx in headers:
+            sm = QHeaderView.Stretch if col_idx == self.stretch_column else QHeaderView.ResizeToContents
+            self.header().setSectionResizeMode(col_idx, sm)
 
     def keyPressEvent(self, event):
-        if event.key() in [ Qt.Key_F2, Qt.Key_Return ] and self.editor is None:
-            self.on_activated(self.currentItem(), self.currentColumn())
-        else:
-            QTreeWidget.keyPressEvent(self, event)
+        if self.itemDelegate().opened:
+            return
+        if event.key() in [ Qt.Key_F2, Qt.Key_Return ]:
+            self.on_activated(self.selectionModel().currentIndex())
+            return
+        super().keyPressEvent(event)
 
-    def permit_edit(self, item, column):
-        return (column in self.editable_columns
-                and self.on_permit_edit(item, column))
-
-    def on_permit_edit(self, item, column):
-        return True
-
-    def on_doubleclick(self, item, column):
-        if self.permit_edit(item, column):
-            self.editItem(item, column)
-
-    def on_activated(self, item, column):
+    def on_activated(self, idx):
         # on 'enter' we show the menu
-        pt = self.visualItemRect(item).bottomLeft()
+        pt = self.visualRect(idx).bottomLeft()
         pt.setX(50)
         self.customContextMenuRequested.emit(pt)
 
-    def createEditor(self, parent, option, index):
-        self.editor = QStyledItemDelegate.createEditor(self.itemDelegate(),
-                                                       parent, option, index)
-        self.editor.editingFinished.connect(self.editing_finished)
-        return self.editor
+    def edit(self, idx, trigger=QAbstractItemView.AllEditTriggers, event=None):
+        """
+        this is to prevent:
+           edit: editing failed
+        from inside qt
+        """
+        return super().edit(idx, trigger, event)
 
-    def editing_finished(self):
-        # Long-time QT bug - pressing Enter to finish editing signals
-        # editingFinished twice.  If the item changed the sequence is
-        # Enter key:  editingFinished, on_change, editingFinished
-        # Mouse: on_change, editingFinished
-        # This mess is the cleanest way to ensure we make the
-        # on_edited callback with the updated item
-        if self.editor:
-            (item, column, prior_text) = self.editing_itemcol
-            if self.editor.text() == prior_text:
-                self.editor = None  # Unchanged - ignore any 2nd call
-            elif item.text(column) == prior_text:
-                pass # Buggy first call on Enter key, item not yet updated
-            else:
-                # What we want - the updated item
-                self.on_edited(*self.editing_itemcol)
-                self.editor = None
-
-            # Now do any pending updates
-            if self.editor is None and self.pending_update:
-                self.pending_update = False
-                self.on_update()
-
-    def on_edited(self, item, column, prior):
-        '''Called only when the text actually changes'''
-        key = item.data(0, Qt.UserRole)
-        text = item.text(column)
-        self.parent.wallet.set_label(key, text)
-        self.parent.history_list.update_labels()
+    def on_edited(self, idx: QModelIndex, user_role, text):
+        self.parent.wallet.set_label(user_role, text)
+        self.parent.history_model.refresh('on_edited in MyTreeView')
         self.parent.update_completions()
 
-    def update(self):
-        # Defer updates if editing
-        if self.editor:
-            self.pending_update = True
+    def should_hide(self, row):
+        """
+        row_num is for self.model(). So if there is a proxy, it is the row number
+        in that!
+        """
+        return False
+
+    def text_txid_from_coordinate(self, row_num, column):
+        assert not isinstance(self.model(), QSortFilterProxyModel)
+        idx = self.model().index(row_num, column)
+        item = self.model().itemFromIndex(idx)
+        user_role = item.data(Qt.UserRole)
+        return item.text(), user_role
+
+    def hide_row(self, row_num):
+        """
+        row_num is for self.model(). So if there is a proxy, it is the row number
+        in that!
+        """
+        should_hide = self.should_hide(row_num)
+        if not self.current_filter and should_hide is None:
+            # no filters at all, neither date nor search
+            self.setRowHidden(row_num, QModelIndex(), False)
+            return
+        for column in self.filter_columns:
+            txt, _ = self.text_txid_from_coordinate(row_num, column)
+            txt = txt.lower()
+            if self.current_filter in txt:
+                # the filter matched, but the date filter might apply
+                self.setRowHidden(row_num, QModelIndex(), bool(should_hide))
+                break
         else:
-            self.setUpdatesEnabled(False)
-            scroll_pos = self.verticalScrollBar().value()
-            self.on_update()
-            self.setUpdatesEnabled(True)
-            # To paint the list before resetting the scroll position
-            self.parent.app.processEvents()
-            self.verticalScrollBar().setValue(scroll_pos)
-        if self.current_filter:
-            self.filter(self.current_filter)
+            # we did not find the filter in any columns, hide the item
+            self.setRowHidden(row_num, QModelIndex(), True)
 
-    def on_update(self):
-        pass
+    def filter(self, p=None):
+        if p is not None:
+            p = p.lower()
+            self.current_filter = p
+        self.hide_rows()
 
-    def get_leaves(self, root):
-        child_count = root.childCount()
-        if child_count == 0:
-            yield root
-        for i in range(child_count):
-            item = root.child(i)
-            for x in self.get_leaves(item):
-                yield x
-
-    def filter(self, p):
-        columns = self.__class__.filter_columns
-        p = p.lower()
-        self.current_filter = p
-        for item in self.get_leaves(self.invisibleRootItem()):
-            item.setHidden(all([item.text(column).lower().find(p) == -1
-                                for column in columns]))
+    def hide_rows(self):
+        for row in range(self.model().rowCount()):
+            self.hide_row(row)
 
     def create_toolbar(self, config=None):
         hbox = QHBoxLayout()
@@ -600,7 +644,9 @@ class ButtonsWidget(QWidget):
 
     def addButton(self, icon_name, on_click, tooltip):
         button = QToolButton(self)
-        button.setIcon(QIcon(icon_name))
+        button.setIcon(read_QIcon(icon_name))
+        button.setIconSize(QSize(25,25))
+        button.setCursor(QCursor(Qt.PointingHandCursor))
         button.setStyleSheet("QToolButton { border: none; hover {border: 1px} pressed {border: 1px} padding: 0px; }")
         button.setVisible(True)
         button.setToolTip(tooltip)
@@ -610,7 +656,7 @@ class ButtonsWidget(QWidget):
 
     def addCopyButton(self, app):
         self.app = app
-        self.addButton(":icons/copy.png", self.on_copy, _("Copy to clipboard"))
+        self.addButton("copy.png", self.on_copy, _("Copy to clipboard"))
 
     def on_copy(self):
         self.app.clipboard().setText(self.text())
@@ -708,6 +754,7 @@ class ColorScheme:
     YELLOW = ColorSchemeItem("#897b2a", "#ffff00")
     RED = ColorSchemeItem("#7c1111", "#f18c8c")
     BLUE = ColorSchemeItem("#123b7c", "#8cb3f2")
+    PURPLE = ColorSchemeItem("#8A2BE2", "#8A2BE2")
     DEFAULT = ColorSchemeItem("black", "white")
 
     @staticmethod
@@ -795,33 +842,54 @@ def get_parent_main_window(widget):
             return widget
     return None
 
-class SortableTreeWidgetItem(QTreeWidgetItem):
-    DataRole = Qt.UserRole + 1
 
-    def __lt__(self, other):
-        column = self.treeWidget().sortColumn()
-        sData = self.data(column, self.DataRole)
-        oData = other.data(column, self.DataRole)
-        if sData is not None and oData is not None:
-            # We have set custom data to sort by
-            return sData < oData
-        try:
-            # Is the value something numeric?
-            return float(self.text(column)) < float(other.text(column))
-        except ValueError:
-            # If not, we will just do string comparison
-            return self.text(column) < other.text(column)
+def icon_path(icon_basename):
+    return resource_path('gui', 'icons', icon_basename)
 
 
-class IconCache:
+@lru_cache(maxsize=1000)
+def read_QIcon(icon_basename):
+    return QIcon(icon_path(icon_basename))
 
-    def __init__(self):
-        self.__cache = {}
 
-    def get(self, file_name):
-        if file_name not in self.__cache:
-            self.__cache[file_name] = QIcon(file_name)
-        return self.__cache[file_name]
+def get_default_language():
+    name = QLocale.system().name()
+    return name if name in languages else 'en_UK'
+
+class FromList(QTreeWidget):
+    def __init__(self, parent, create_menu):
+        super().__init__(parent)
+        self.setHeaderHidden(True)
+        self.setMaximumHeight(300)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(create_menu)
+        self.setUniformRowHeights(True)
+        # remove left margin
+        self.setRootIsDecorated(False)
+        self.setColumnCount(2)
+        self.header().setStretchLastSection(False)
+        sm = QHeaderView.ResizeToContents
+        self.header().setSectionResizeMode(0, sm)
+        self.header().setSectionResizeMode(1, sm)
+
+
+def char_width_in_lineedit() -> int:
+    char_width = QFontMetrics(QLineEdit().font()).averageCharWidth()
+    # 'averageCharWidth' seems to underestimate on Windows, hence 'max()'
+    return max(9, char_width)
+
+
+def webopen(url: str):
+    if sys.platform == 'linux' and os.environ.get('APPIMAGE'):
+        # When on Linux webbrowser.open can fail in AppImage because it can't find the correct libdbus.
+        # We just fork the process and unset LD_LIBRARY_PATH before opening the URL.
+        # See #5425
+        if os.fork() == 0:
+            del os.environ['LD_LIBRARY_PATH']
+            webbrowser.open(url)
+            sys.exit(0)
+    else:
+        webbrowser.open(url)
 
 
 if __name__ == "__main__":

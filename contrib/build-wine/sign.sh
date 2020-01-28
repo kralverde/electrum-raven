@@ -25,8 +25,8 @@ for f in $(ls *.exe); do
     osslsigncode sign \
       -certs "$CERT_FILE" \
       -key "$KEY_FILE" \
-      -n "Electrum-rvn" \
-      -i "https://electrum-rvn.org/" \
+      -n "Electrum" \
+      -i "https://electrum.org/" \
       -t "http://timestamp.digicert.com/" \
       -in "$f" \
       -out "../signed/$f"
