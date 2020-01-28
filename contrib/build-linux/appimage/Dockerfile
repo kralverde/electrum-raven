@@ -12,7 +12,7 @@ RUN apt-get update -q && \
         libtool=2.4.6-0.1 \
         xz-utils=5.1.1alpha+20120614-2ubuntu2 \
         libssl-dev=1.0.2g-1ubuntu4.15 \
-        zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.1 \
+        zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.3 \
         libffi-dev=3.2.1-4 \
         libncurses5-dev=6.0+20160213-1ubuntu1 \
         libsqlite3-dev=3.11.0-1ubuntu1.3 \
