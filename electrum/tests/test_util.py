@@ -50,50 +50,50 @@ class TestUtil(SequentialTestCase):
         self.assertEqual(expected, result)
 
     def test_parse_URI_address(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx'})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS'})
 
     def test_parse_URI_only_address(self):
-        self._do_test_parse_URI('MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx'})
+        self._do_test_parse_URI('RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS'})
 
 
     def test_parse_URI_address_label(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx?label=electrum%20test',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx', 'label': 'electrum test'})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?label=electrum%20test',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS', 'label': 'electrum test'})
 
     def test_parse_URI_address_message(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx?message=electrum%20test',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx', 'message': 'electrum test', 'memo': 'electrum test'})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?message=electrum%20test',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS', 'message': 'electrum test', 'memo': 'electrum test'})
 
     def test_parse_URI_address_amount(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx?amount=0.0003',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx', 'amount': 30000})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?amount=0.0003',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS', 'amount': 30000})
 
     def test_parse_URI_address_request_url(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx?r=http://domain.tld/page?h%3D2a8628fc2fbe',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx', 'r': 'http://domain.tld/page?h=2a8628fc2fbe'})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?r=http://domain.tld/page?h%3D2a8628fc2fbe',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS', 'r': 'http://domain.tld/page?h=2a8628fc2fbe'})
 
     def test_parse_URI_ignore_args(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx?test=test',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx', 'test': 'test'})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?test=test',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS', 'test': 'test'})
 
     def test_parse_URI_multiple_args(self):
-        self._do_test_parse_URI('ravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx?amount=0.00004&label=electrum-test&message=electrum%20test&test=none&r=http://domain.tld/page',
-                                {'address': 'MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx', 'amount': 4000, 'label': 'electrum-test', 'message': u'electrum test', 'memo': u'electrum test', 'r': 'http://domain.tld/page', 'test': 'none'})
+        self._do_test_parse_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?amount=0.00004&label=electrum-test&message=electrum%20test&test=none&r=http://domain.tld/page',
+                                {'address': 'RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS', 'amount': 4000, 'label': 'electrum-test', 'message': u'electrum test', 'memo': u'electrum test', 'r': 'http://domain.tld/page', 'test': 'none'})
 
     def test_parse_URI_no_address_request_url(self):
-        self._do_test_parse_URI('ravencoin:?r=http://domain.tld/page?h%3D2a8628fc2fbe',
+        self._do_test_parse_URI('raven:?r=http://domain.tld/page?h%3D2a8628fc2fbe',
                                 {'r': 'http://domain.tld/page?h=2a8628fc2fbe'})
 
     def test_parse_URI_invalid_address(self):
-        self.assertRaises(BaseException, parse_URI, 'ravencoin:invalidaddress')
+        self.assertRaises(BaseException, parse_URI, 'raven:invalidaddress')
 
     def test_parse_URI_invalid(self):
-        self.assertRaises(BaseException, parse_URI, 'notravencoin:MNLYufbz5pRmmHEu1XhYmE2JGfp6Z5DJhx')
+        self.assertRaises(BaseException, parse_URI, 'notraven:15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma')
 
     def test_parse_URI_parameter_polution(self):
-        self.assertRaises(Exception, parse_URI, 'bitcoin:15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma?amount=0.0003&label=test&amount=30.0')
+        self.assertRaises(Exception, parse_URI, 'raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?amount=0.0003&label=test&amount=30.0')
 
     def test_is_hash256_str(self):
         self.assertTrue(is_hash256_str('09a4c03e3bdf83bbe3955f907ee52da4fc12f4813d459bc75228b64ad08617c7'))
