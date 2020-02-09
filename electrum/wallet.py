@@ -1181,7 +1181,7 @@ class Abstract_Wallet(AddressSynchronizer):
         if not r:
             return
         out = copy.copy(r)
-        out['URI'] = 'ravencoin:' + addr + '?amount=' + format_satoshis(out.get('amount'))
+        out['URI'] = 'raven:' + addr + '?amount=' + format_satoshis(out.get('amount'))
         status, conf = self.get_request_status(addr)
         out['status'] = status
         if conf is not None:

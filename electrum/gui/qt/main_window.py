@@ -646,12 +646,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         d = self.network.get_donation_address()
         if d:
             host = self.network.get_parameters().host
-            self.pay_to_URI('ravencoin:%s?message=donation for %s'%(d, host))
+            self.pay_to_URI('raven:%s?message=donation for %s'%(d, host))
         else:
             self.show_error(_('No donation address for this server'))
             
     def donate_to_dev(self):
-        self.pay_to_URI('ravencoin:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS')
+        self.pay_to_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?message=Developer donation')
 
     def show_about(self):
         QMessageBox.about(self, "Electrum-rvn",
@@ -2517,8 +2517,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             return
         if not data:
             return
-        # if the user scanned a bitcoin URI
-        if str(data).startswith("ravencoin:"):
+        # if the user scanned a ravencoin URI
+        if str(data).startswith("raven:"):
             self.pay_to_URI(data)
             return
         # else if the user scanned an offline signed tx
