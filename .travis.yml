@@ -1,18 +1,13 @@
-dist: xenial
+dist: bionic
 language: python
 python:
     - 3.6
     - 3.7
 git:
   depth: false
-addons:
-  apt:
-    sources:
-      - sourceline: 'ppa:tah83/secp256k1'
-    packages:
-      - libsecp256k1-0
 before_install:
   - git tag
+  - sudo apt-get -y install libsecp256k1-0
 install:
   - pip install -r contrib/requirements/requirements-travis.txt
 cache:
