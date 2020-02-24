@@ -812,13 +812,15 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         if not self.wallet:
             return
 
+        status_text = ""
         if self.network is None:
             text = _("Offline")
             icon = read_QIcon("status_disconnected.png")
 
         elif self.network.is_connected():
             server_height = self.network.get_server_height()
-            server_lag = self.network.get_local_height() - server_height
+            local_height = self.network.get_local_height()
+            server_lag = local_height - server_height
             fork_str = "_fork" if len(self.network.get_blockchains())>1 else ""
             # Server height can be 0 after switching to a new server
             # until we get a headers subscription request response.
@@ -847,6 +849,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
                     icon = read_QIcon("status_connected%s.png"%fork_str)
                 else:
                     icon = read_QIcon("status_connected_proxy%s.png"%fork_str)
+
+                if local_height < server_height-100:
+                    status_text = "Syncing headers {}/{}".format(local_height,server_height)
         else:
             if self.network.proxy:
                 text = "{} ({})".format(_("Not connected"), _("proxy enabled"))
@@ -856,6 +861,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         self.tray.setToolTip("%s (%s)" % (text, self.wallet.basename()))
         self.balance_label.setText(text)
+        self.status_label.setText(status_text)
         self.status_button.setIcon( icon )
 
     def update_wallet(self):
@@ -2104,8 +2110,14 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         self.balance_label = QLabel("Loading wallet...")
         self.balance_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.balance_label.setAlignment(Qt.AlignVCenter)
         self.balance_label.setStyleSheet("""QLabel { padding: 0 }""")
         sb.addWidget(self.balance_label)
+
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.status_label.setStyleSheet("""QLabel { padding: 0 }""")
+        sb.addPermanentWidget(self.status_label)
 
         self.search_box = QLineEdit()
         self.search_box.textChanged.connect(self.do_search)

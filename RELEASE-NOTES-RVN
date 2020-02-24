@@ -1,4 +1,9 @@
-# Release 3.3.8-rvn1 - (Dec XX, 2019)
+# Release 3.3.8-rvn2 - (Feb, 2020)
+ * 'Checkpoints' file for DGW blocks - faster initial sync
+ * Fix raven URI in payment requests
+ * Use coinbase for currency rates (bitcoinaverage no longer free)
+
+# Release 3.3.8-rvn1 - (Dec, 2019)
  * support x16rv2 fork
  * base update to Electrum 3.3.8 (many changes - see RELEASE-NOTES)
  * add built in log viewer
