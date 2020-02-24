@@ -102,6 +102,7 @@ deploy:
     - dist/electrum*.AppImage
   skip_cleanup: true
   draft: false
+  overwrite: true
   on:
     tags: true
     repo: standard-error/electrum-raven
