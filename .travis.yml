@@ -7,8 +7,8 @@ git:
   depth: false
 before_install:
   - git tag
-  - sudo apt-get -y install libsecp256k1-0
 install:
+  - sudo apt-get -y install libsecp256k1-0
   - pip install -r contrib/requirements/requirements-travis.txt
 cache:
   - pip: true
