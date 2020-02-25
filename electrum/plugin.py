@@ -28,7 +28,8 @@ import importlib.util
 import time
 import threading
 import sys
-from typing import NamedTuple, Any, Union, TYPE_CHECKING, Optional
+from typing import (NamedTuple, Any, Union, TYPE_CHECKING, Optional, Tuple,
+                    Dict, Iterable, List)
 
 from .i18n import _
 from .util import (profiler, DaemonThread, UserCancelled, ThreadJob)
@@ -36,6 +37,10 @@ from . import bip32
 from . import plugins
 from .simple_config import SimpleConfig
 from .logging import get_logger, Logger
+
+if TYPE_CHECKING:
+    from .plugins.hw_wallet import HW_PluginBase, HardwareClientBase
+    from .keystore import Hardware_KeyStore
 
 
 _logger = get_logger(__name__)
