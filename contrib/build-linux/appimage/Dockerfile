@@ -6,6 +6,7 @@ RUN apt-get update -q && \
     apt-get install -qy \
         git=1:2.7.4-0ubuntu1.7 \
         wget=1.17.1-1ubuntu1.5 \
+        cmake=3.5.1-1ubuntu3 \
         make=4.1-6 \
         autotools-dev=20150820.1 \
         autoconf=2.69-9 \
@@ -21,6 +22,7 @@ RUN apt-get update -q && \
         gettext=0.19.7-2ubuntu3.1 \
         libzbar0=0.10+doc-10ubuntu1  \
         libdbus-1-3=1.10.6-1ubuntu3.4 \
+        g++=4:5.3.1-1ubuntu1 \
         && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get autoremove -y && \

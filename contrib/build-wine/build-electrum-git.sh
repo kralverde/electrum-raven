@@ -41,7 +41,6 @@ popd
 find -exec touch -d '2000-11-11T11:11:11+00:00' {} +
 popd
 
-
 # Install frozen dependencies
 $PYTHON -m pip install --no-warn-script-location -r "$CONTRIB"/deterministic-build/requirements.txt
 
