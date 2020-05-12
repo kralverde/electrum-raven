@@ -1,3 +1,6 @@
+# Release 3.3.8-rvn3 - (May, 2020)
+ * Support KAWPOW mining algo fork
+
 # Release 3.3.8-rvn2 - (Feb, 2020)
  * 'Checkpoints' file for DGW blocks - faster initial sync
  * Fix raven URI in payment requests

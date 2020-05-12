@@ -23,29 +23,42 @@
 import os
 import sys
 import threading
+import struct
 from typing import Optional, Dict, Mapping, Sequence
 
 from . import constants
 from . import util
+from .crypto import sha256d
 from .bitcoin import hash_encode, int_to_hex, rev_hex
 from .logging import get_logger, Logger
 from .simple_config import SimpleConfig
 from .util import bfh, bh2u
 
 MAX_TARGET = 0x00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+KAWPOW_LIMIT = 0x0000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 _logger = get_logger(__name__)
 
-HEADER_SIZE = 80  # bytes
+HEADER_SIZE = 120  # bytes
 
 nDGWActivationBlock = 338778
 DGW_PASTBLOCKS = 180
 
+if constants.net.TESTNET:
+    X16Rv2ActivationTS = 1567533600
+    KawpowActivationTS = 1585159200
+    KawpowActivationHeight = 231544
+else:
+    X16Rv2ActivationTS = 1569945600
+    KawpowActivationTS = 1588788000
+    KawpowActivationHeight = 1219736
+
 try:
     import x16r_hash
     import x16rv2_hash
+    import kawpow
 except ImportError as e:
-    sys.exit("x16r and x16rv2 modules are required")
+    sys.exit("x16r, x16rv2 and kawpow modules are required")
 
 
 class MissingHeader(Exception):
@@ -57,12 +70,24 @@ class InvalidHeader(Exception):
 
 
 def serialize_header(header_dict: dict) -> str:
-    s = int_to_hex(header_dict['version'], 4) \
-        + rev_hex(header_dict['prev_block_hash']) \
-        + rev_hex(header_dict['merkle_root']) \
-        + int_to_hex(int(header_dict['timestamp']), 4) \
-        + int_to_hex(int(header_dict['bits']), 4) \
-        + int_to_hex(int(header_dict['nonce']), 4)
+    ts = header_dict['timestamp']
+    if ts >= KawpowActivationTS:
+        s = int_to_hex(header_dict['version'], 4) \
+            + rev_hex(header_dict['prev_block_hash']) \
+            + rev_hex(header_dict['merkle_root']) \
+            + int_to_hex(int(header_dict['timestamp']), 4) \
+            + int_to_hex(int(header_dict['bits']), 4) \
+            + int_to_hex(int(header_dict['nheight']), 4) \
+            + int_to_hex(int(header_dict['nonce']), 8) \
+            + rev_hex(header_dict['mix_hash'])
+    else:
+        s = int_to_hex(header_dict['version'], 4) \
+            + rev_hex(header_dict['prev_block_hash']) \
+            + rev_hex(header_dict['merkle_root']) \
+            + int_to_hex(int(header_dict['timestamp']), 4) \
+            + int_to_hex(int(header_dict['bits']), 4) \
+            + int_to_hex(int(header_dict['nonce']), 4)
+        s = s.ljust(HEADER_SIZE*2, '0') # pad with zeros to post kawpow header size
     return s
 
 
@@ -78,32 +103,59 @@ def deserialize_header(s: bytes, height: int) -> dict:
     h['merkle_root'] = hash_encode(s[36:68])
     h['timestamp'] = hex_to_int(s[68:72])
     h['bits'] = hex_to_int(s[72:76])
-    h['nonce'] = hex_to_int(s[76:80])
+    if h['timestamp'] >= KawpowActivationTS:
+        h['nheight'] = hex_to_int(s[76:80])
+        h['nonce'] = hex_to_int(s[80:88])
+        h['mix_hash'] = hash_encode(s[88:120])
+    else:
+        h['nonce'] = hex_to_int(s[76:80])
     h['block_height'] = height
     return h
 
 
 def hash_header(header: dict) -> str:
-    if constants.net.TESTNET:
-        X16Rv2ActivationTS = 1567533600
-    else:
-        X16Rv2ActivationTS = 1569945600
     if header is None:
         return '0' * 64
     if header.get('prev_block_hash') is None:
         header['prev_block_hash'] = '00' * 32
-    if header['timestamp'] >= X16Rv2ActivationTS:
-        return hash_raw_header_v2(serialize_header(header))
+    if header['timestamp'] >= KawpowActivationTS:
+        return hash_raw_header_kawpow(serialize_header(header))
+    elif header['timestamp'] >= X16Rv2ActivationTS:
+        hdr = serialize_header(header)[:80*2]
+        h = hash_raw_header_v2(hdr)
+        return h
     else:
-        return hash_raw_header(serialize_header(header))
+        hdr = serialize_header(header)[:80*2]
+        h = hash_raw_header(hdr)
+        return h
 
 
 def hash_raw_header(header: str) -> str:
-    return hash_encode(x16r_hash.getPoWHash(bfh(header)))
+    raw_hash = x16r_hash.getPoWHash(bfh(header)[:80])
+    hash_result = hash_encode(raw_hash)
+    return hash_result
 
 
 def hash_raw_header_v2(header: str) -> str:
-    return hash_encode(x16rv2_hash.getPoWHash(bfh(header)))
+    raw_hash = x16rv2_hash.getPoWHash(bfh(header)[:80])
+    hash_result = hash_encode(raw_hash)
+    return hash_result
+
+def revb(data):
+    b = bytearray(data)
+    b.reverse()
+    return bytes(b)
+
+def kawpow_hash(hdr_bin):
+     header_hash = revb(sha256d(hdr_bin[:80]))
+     mix_hash = revb(hdr_bin[88:120])
+     nNonce64 = struct.unpack("< Q",hdr_bin[80:88])[0]
+     final_hash = revb(kawpow.light_verify(header_hash, mix_hash, nNonce64))
+     return final_hash
+
+def hash_raw_header_kawpow(header: str) -> str:
+     final_hash = hash_encode(kawpow_hash(bfh(header)))
+     return final_hash
 
 
 # key: blockhash hex at forkpoint
@@ -327,12 +379,13 @@ class Blockchain(Logger):
         bits = cls.target_to_bits(target)
         if bits != header.get('bits'):
             raise Exception("bits mismatch: %s vs %s" % (bits, header.get('bits')))
-        X16Rv2ActivationTS = 1569945600
-        if header['timestamp'] >= X16Rv2ActivationTS:
-            hash_func = x16rv2_hash
+        if header['timestamp'] >= KawpowActivationTS:
+            hash_func = kawpow_hash
+        elif header['timestamp'] >= X16Rv2ActivationTS:
+            hash_func = x16rv2_hash.getPoWHash
         else:
-            hash_func = x16r_hash
-        _powhash = rev_hex(bh2u(hash_func.getPoWHash(bfh(serialize_header(header)))))
+            hash_func = x16r_hash.getPoWHash
+        _powhash = rev_hex(bh2u(hash_func(bfh(serialize_header(header)))))
         if int('0x' + _powhash, 16) > target:
             raise Exception("insufficient proof of work: %s vs target %s" % (int('0x' + _powhash, 16), target))
 
@@ -653,6 +706,7 @@ class Blockchain(Logger):
         return bnNew
 
     def get_target(self, height, chain=None):
+
         if constants.net.TESTNET:
             return 0
         elif height // 2016 < len(self.checkpoints) and height % 2016 == 0:
@@ -666,6 +720,8 @@ class Blockchain(Logger):
             h, t = self.checkpoints_dgw[height - nDGWActivationBlock].split(",")
             t = self.bits_to_target(int(t, 16))
             return t
+        elif not constants.net.TESTNET and height in range(1219736,1219736+180): # kawpow reset
+            return KAWPOW_LIMIT
         else:
             return self.get_target_dgwv3(height, chain)
 
