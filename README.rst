@@ -1,8 +1,3 @@
-Notes from kralverde
-=====================================
-Future notes will go here....
-(RVN Tips if you're feeling generous: RDRczYCUeLwXVnrKMYHKYLS1oPc9aCxGnG)
-
 Electrum-raven - Lightweight Ravencoin client
 =====================================
 
