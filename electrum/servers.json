@@ -1,8 +1,20 @@
 {
-    "electrumx-rvn.nbits.dev": {
+    "rvn4lyfe.com": {
         "pruning": "-",
         "s": "50002",
         "t": "50001",
         "version": "1.4"
+    },
+    "ravennode-01.beep.pw": {
+	"pruning": "-",
+	"s": "50002",
+	"t": "50001",
+	"version": "1.4"
+    },
+    "ravennode-02.beep.pw": {
+	"pruning": "-",
+	"s": "50002",
+	"t": "50001",
+	"version": "1.4"
     }
 }
