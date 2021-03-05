@@ -22,6 +22,8 @@ Running with python3 (recommended for linux):
 
 Building executables for windows:
 
+NOTE: You currently need to manually update your blockchain_headers file after building with docker. Refer to https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3. If using the portable version, your blockchain_headers file will be in the the electrum-rvn_data directory which will be in the same directory as the portable version after the first run.
+
 1. Install docker (if using windows use the ubuntu vm)
 2. sudo docker build -t electrum-wine-builder-img contrib/build-wine
 3. Create Executables::

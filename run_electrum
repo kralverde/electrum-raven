@@ -99,16 +99,19 @@ _logger = get_logger(__name__)
 # This is crypto heresey.
 # TODO: Make this more elegant
 def clone_post_fork_headers(config: SimpleConfig):
-	header_dir = util.get_headers_dir(config);
-	base_headers_name = 'blockchain_headers.gz';
-	active_headers_name = 'blockchain_headers';
-	base_path = os.path.join(script_dir, base_headers_name);
-	active_path = os.path.join(header_dir, active_headers_name);
-	
-	if not os.path.exists(active_path):
-		with gzip.open(base_path, 'rb') as read_from, open(active_path, 'ab') as write_to:
-			for data in read_from:
-				write_to.write(data)
+	try:
+		header_dir = util.get_headers_dir(config);
+		base_headers_name = 'blockchain_headers.gz';
+		active_headers_name = 'blockchain_headers';
+		base_path = os.path.join(script_dir, base_headers_name);
+		active_path = os.path.join(header_dir, active_headers_name);
+		
+		if not os.path.exists(active_path):
+			with gzip.open(base_path, 'rb') as read_from, open(active_path, 'ab') as write_to:
+				for data in read_from:
+					write_to.write(data)
+	except:
+		pass #If the blockchain_headers zip is not in the path, ignore (currently happens when building docker files)
 
 
 # get password routine
