@@ -24,9 +24,8 @@ Building executables for windows:
 
 1. Install docker (if using windows use the ubuntu vm)
 2. sudo docker build -t electrum-wine-builder-img contrib/build-wine
-3. Build Windows binaries
+3. Create Executables::
 
-    ```
     $ sudo docker run -it \
         --name electrum-wine-builder-cont \
         -v $PWD:/opt/wine64/drive_c/electrum \
@@ -34,8 +33,6 @@ Building executables for windows:
         --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
         electrum-wine-builder-img \
         ./build.sh
-    ```
-    
 4. The generated binaries are in ./contrib/build-wine/dist
 5. Refer to :code:`contrib/build-wine/README.md`.
 
