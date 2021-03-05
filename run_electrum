@@ -26,6 +26,8 @@
 import os
 import sys
 import warnings
+import gzip
+import shutil
 
 
 MIN_PYTHON_VERSION = "3.6.1"  # FIXME duplicated from setup.py
@@ -92,6 +94,21 @@ from electrum import daemon
 from electrum import keystore
 
 _logger = get_logger(__name__)
+
+# This method clones an updated header file as a platform for syncing due to the rvn fork.
+# This is crypto heresey.
+# TODO: Make this more elegant
+def clone_post_fork_headers(config: SimpleConfig):
+	header_dir = util.get_headers_dir(config);
+	base_headers_name = 'blockchain_headers.gz';
+	active_headers_name = 'blockchain_headers';
+	base_path = os.path.join(script_dir, base_headers_name);
+	active_path = os.path.join(header_dir, active_headers_name);
+	
+	if not os.path.exists(active_path):
+		with gzip.open(base_path, 'rb') as read_from, open(active_path, 'ab') as write_to:
+			for data in read_from:
+				write_to.write(data)
 
 
 # get password routine
@@ -346,7 +363,9 @@ if __name__ == '__main__':
 
     # todo: defer this to gui
     config = SimpleConfig(config_options)
-
+    
+    clone_post_fork_headers(config)
+    
     cmdname = config.get('cmd')
 
     if config.get('testnet'):
