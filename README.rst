@@ -14,7 +14,7 @@ Running the software presteps (tested on ubuntu 20.04):
 2. Clone this repo
 3. The rest of the steps in this temporary guide assume you are in the root of the project
 
-Running with python3 (recommended for linux):
+Running with python3 (recommended for linux/if you have python on your device):
 
 1. sudo apt-get install python3-pyqt5
 2. sudo python3 -m pip install
