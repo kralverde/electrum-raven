@@ -36,6 +36,8 @@ Building executables for windows:
 4. The generated binaries are in ./contrib/build-wine/dist
 5. Refer to https://github.com/kralverde/electrum-raven/tree/master/contrib/build-wine for more information.
 
+Other docker build files are currently broken
+
 Electrum-raven - Lightweight Ravencoin client
 =====================================
 
