@@ -1,3 +1,44 @@
+kralverde's notes
+=====================================
+
+Botched together tweaks:
+
+- Hardware (ledger) support fix
+- Updated defunct default electrumx servers
+- Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
+- Crude wine docker fix
+
+Running the software presteps (tested on ubuntu 20.04):
+
+1. Familiarize yourself with git
+2. Clone this repo
+3. The rest of the steps in this temporary guide assume you are in the root of the project
+
+Running with python3 (recommended for linux):
+
+1. sudo apt-get install python3-pyqt5
+2. sudo python3 -m pip install cmake
+3. ./electrum-env
+
+Building executables for windows:
+
+1. Install docker (if using windows use the ubuntu vm)
+2. sudo docker build -t electrum-wine-builder-img contrib/build-wine
+3. Build Windows binaries
+
+    ```
+    $ sudo docker run -it \
+        --name electrum-wine-builder-cont \
+        -v $PWD:/opt/wine64/drive_c/electrum \
+        --rm \
+        --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
+        electrum-wine-builder-img \
+        ./build.sh
+    ```
+    
+4. The generated binaries are in ./contrib/build-wine/dist
+5. Refer to :code:`contrib/build-wine/README.md`.
+
 Electrum-raven - Lightweight Ravencoin client
 =====================================
 
