@@ -39,6 +39,7 @@ binaries += [('C:/tmp/libsecp256k1.dll', '.')]
 
 datas = [
     (home+'electrum/*.json', 'electrum'),
+    (home+'blockchain_headers.gz', '.'),
     (home+'electrum/wordlist/english.txt', 'electrum/wordlist'),
     (home+'electrum/locale', 'electrum/locale'),
     (home+'electrum/plugins', 'electrum/plugins'),

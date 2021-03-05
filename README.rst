@@ -23,7 +23,7 @@ Running with python3 (recommended for linux/if you have python on your device):
 
 Building executables:
 
-NOTE: You currently need to manually update your blockchain_headers file after building with docker. Refer to https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3. If using the portable version, your blockchain_headers file will be in the the electrum-rvn_data directory which will be in the same directory as the portable version after the first run. YOU WILL NOT BE ABLE TO SYNC WITH SERVERS IF YOU DO NOT DO THIS!
+NOTE: These executables are a little bloated because my hotfix for getting a correct header base is literally sticking a zipped blockchain_headers file in the executable
 
 Windows:
 
