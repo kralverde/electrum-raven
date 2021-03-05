@@ -34,7 +34,7 @@ Building executables for windows:
         electrum-wine-builder-img \
         ./build.sh
 4. The generated binaries are in ./contrib/build-wine/dist
-5. Refer to :code:`contrib/build-wine/README.md`.
+5. Refer to https://github.com/kralverde/electrum-raven/tree/master/contrib/build-wine for more information.
 
 Electrum-raven - Lightweight Ravencoin client
 =====================================
