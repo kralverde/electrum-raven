@@ -146,6 +146,8 @@ info "desktop integration."
 cp "$PROJECT_ROOT/electrum-rvn.desktop" "$APPDIR/electrum-rvn.desktop"
 cp "$PROJECT_ROOT/electrum/gui/icons/electrum.png" "$APPDIR/electrum.png"
 
+info "copying blockchain_headers."
+cp "$PROJECT_ROOT/blockchain_headers.gz" "$APPDIR/usr/bin/blockchain_headers.gz"
 
 # add launcher
 cp "$CONTRIB_APPIMAGE/apprun.sh" "$APPDIR/AppRun"
