@@ -41,6 +41,22 @@ Windows:
 4. The generated binaries are in ./contrib/build-wine/dist
 5. Refer to https://github.com/kralverde/electrum-raven/tree/master/contrib/build-wine for more information.
 
+Linux Appimage:
+
+1. Install docker
+2. sudo docker build -t electrum-appimage-builder-img contrib/build-linux/appimage
+3. Create Executables::
+
+    $ sudo docker run -it \
+        --name electrum-appimage-builder-cont \
+        -v $PWD:/opt/electrum \
+        --rm \
+        --workdir /opt/electrum/contrib/build-linux/appimage \
+        electrum-appimage-builder-img \
+        ./build.sh
+4. The generated binaries are in ./dist
+5. Refer to https://github.com/kralverde/electrum-raven/tree/master/contrib/build-linux/appimage for more information.
+
 Other docker build files are currently broken
 
 Electrum-raven - Lightweight Ravencoin client
