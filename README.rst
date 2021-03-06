@@ -6,7 +6,7 @@ Botched together tweaks:
 - Hardware (ledger) support fix
 - Updated defunct default electrumx servers
 - Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
-- Crude wine docker fix
+- Crude wine and linux appimage docker fixes
 
 Running the software presteps (tested on ubuntu 20.04):
 
