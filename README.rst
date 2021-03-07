@@ -23,6 +23,8 @@ Running with python3 (recommended for linux/if you have python on your device):
 
 Building executables:
 
+If you are having trouble building binaries check https://github.com/kralverde/electrum-raven/releases (You should try and build these yourself first!!!)
+
 NOTE: These executables are a little bloated because my hotfix for getting a correct header base is literally sticking a zipped blockchain_headers file in the executable. Currently working on getting the client to sync the whole chain.
 
 Windows:
