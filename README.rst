@@ -17,7 +17,7 @@ Running the software presteps (tested on ubuntu 20.04):
 Running with python3 (recommended for linux/if you have python on your device):
 
 1. sudo apt-get install python3-pyqt5
-2. sudo python3 -m pip install
+2. sudo apt-get install python3-virtualenv
 3. sudo python3 -m pip install cmake
 4. ./electrum-env
 
