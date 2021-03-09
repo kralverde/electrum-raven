@@ -14,12 +14,14 @@ Running the software presteps (tested on ubuntu 20.04):
 2. Clone this repo
 3. The rest of the steps in this temporary guide assume you are in the root of the project
 
+NOTE: Building binaries may affect raw python performance. You can always reclone the files.
+
 Running with python3 (recommended for linux/if you have python on your device):
 
 1. sudo apt-get install python3-pyqt5
-2. sudo apt-get install python3-virtualenv
-3. sudo python3 -m pip install cmake
-4. ./electrum-env
+2. sudo python3 -m pip install cmake
+3. sudo python3 -m pip install .[fast]
+4. ./run_electrum
 
 Building executables:
 
