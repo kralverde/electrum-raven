@@ -104,6 +104,8 @@ class BitcoinTestnet(AbstractNet):
     DEFAULT_PORTS = {'t': '51001', 's': '51002'}
     DEFAULT_SERVERS = read_json('servers_testnet.json', {})
     CHECKPOINTS = read_json('checkpoints_testnet.json', [])
+    CHECKPOINTS_DGW = []
+
 
     XPRV_HEADERS = {
         'standard':    0x04358394,  # tprv
@@ -141,7 +143,8 @@ class BitcoinSimnet(BitcoinTestnet):
 
 
 # don't import net directly, import the module instead (so that net is singleton)
-net = BitcoinMainnet
+#net = BitcoinMainnet
+net = BitcoinTestnet
 
 def set_simnet():
     global net

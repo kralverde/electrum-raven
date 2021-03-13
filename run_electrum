@@ -371,7 +371,7 @@ if __name__ == '__main__':
     # todo: defer this to gui
     config = SimpleConfig(config_options)
     
-    clone_post_fork_headers(config)
+    #clone_post_fork_headers(config)
     
     cmdname = config.get('cmd')
 
