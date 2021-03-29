@@ -19,6 +19,7 @@ NOTE: Building binaries may affect raw python performance. You can always reclon
 Running with python3 (recommended for linux/if you have python on your device):
 
 1. sudo apt-get install python3-pyqt5
+2. insure the following is installed: https://electrum.readthedocs.io/en/latest/hardware-linux.html
 2. ./electrum-env
 
 Building executables:
