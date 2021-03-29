@@ -30,6 +30,7 @@ try:
     from btchip.bitcoinTransaction import bitcoinTransaction
     from btchip.btchipFirmwareWizard import checkFirmware, updateFirmware
     from btchip.btchipException import BTChipException
+    from btchip.bitcoinVarint import *
     BTCHIP = True
     BTCHIP_DEBUG = False
 except ImportError:
@@ -214,6 +215,89 @@ class Ledger_Client():
             return False, None, None
         return True, response, response
 
+class modified_btchip(btchip):
+    
+    def __init__(self, original):
+        self.original = original
+        self.dongle = original.dongle
+        self.needKeyCache = original.needKeyCache
+
+    #Same code as normal with counters stuck in
+    def getTrustedInput(self, currenttx, totaltx, handler, transaction, index):
+        result = {}
+        # Header
+        apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x00, 0x00 ]
+        params = bytearray.fromhex("%.8x" % (index))
+        params.extend(transaction.version)
+        writeVarint(len(transaction.inputs), params)
+        apdu.append(len(params))
+        apdu.extend(params)
+        self.dongle.exchange(bytearray(apdu))
+        # Each input
+        counter = 0
+        for trinput in transaction.inputs:
+            apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00 ]
+            params = bytearray(trinput.prevOut)
+            writeVarint(len(trinput.script), params)
+            apdu.append(len(params))
+            apdu.extend(params)
+            self.dongle.exchange(bytearray(apdu))
+            offset = 0
+            while True:
+                blockLength = 251
+                if ((offset + blockLength) < len(trinput.script)):
+                    dataLength = blockLength
+                else:
+                    dataLength = len(trinput.script) - offset
+                params = bytearray(trinput.script[offset : offset + dataLength])
+                if ((offset + dataLength) == len(trinput.script)):
+                    params.extend(trinput.sequence)
+                apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, len(params) ]
+                apdu.extend(params)
+                self.dongle.exchange(bytearray(apdu))
+                offset += dataLength
+                if (offset >= len(trinput.script)):
+                    break
+            counter += 1
+            print(str(type(handler)))
+            handler.show_message("Parsing Transaction {}/{}; Inputs: {}/{}, Outputs: {}/{}".format(currenttx, totaltx, counter, len(transaction.inputs), 0, len(transaction.outputs)))
+        # Number of outputs
+        apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00 ]
+        params = []
+        writeVarint(len(transaction.outputs), params)
+        apdu.append(len(params))
+        apdu.extend(params)
+        self.dongle.exchange(bytearray(apdu))
+        # Each output
+        indexOutput = 0
+        counter = 0
+        for troutput in transaction.outputs:
+            apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00 ]
+            params = bytearray(troutput.amount)
+            writeVarint(len(troutput.script), params)
+            apdu.append(len(params))
+            apdu.extend(params)
+            self.dongle.exchange(bytearray(apdu))
+            offset = 0
+            while (offset < len(troutput.script)):
+                blockLength = 255
+                if ((offset + blockLength) < len(troutput.script)):
+                    dataLength = blockLength
+                else:
+                    dataLength = len(troutput.script) - offset
+                apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, dataLength ]
+                apdu.extend(troutput.script[offset : offset + dataLength])
+                self.dongle.exchange(bytearray(apdu))
+                offset += dataLength
+            counter += 1
+            print("Outputs: {}/{}".format(counter, len(transaction.outputs)))
+        # Locktime
+        apdu = [ self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, len(transaction.lockTime) ]
+        apdu.extend(transaction.lockTime)
+        response = self.dongle.exchange(bytearray(apdu))
+        result['trustedInput'] = True
+        result['value'] = response
+        return result
 
 class Ledger_KeyStore(Hardware_KeyStore):
     hw_type = 'ledger'
@@ -422,10 +506,13 @@ class Ledger_KeyStore(Hardware_KeyStore):
                 else:
                     output = o.address
 
-        self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
+        #self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
         try:
+            counter = 0
             # Get trusted inputs from the original transactions
             for utxo in inputs:
+                counter += 1
+                print("Parsing Transaction: {}/{}".format(counter, len(inputs)))
                 sequence = int_to_hex(utxo[5], 4)
                 if segwitTransaction:
                     tmp = bfh(utxo[3])[::-1]
@@ -435,7 +522,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     redeemScripts.append(bfh(utxo[2]))
                 elif not p2shTransaction:
                     txtmp = bitcoinTransaction(bfh(utxo[0]))
-                    trustedInput = self.get_client().getTrustedInput(txtmp, utxo[1])
+                    trustedInput = modified_btchip(self.get_client()).getTrustedInput(counter, len(inputs), self.handler, txtmp, utxo[1])
                     trustedInput['sequence'] = sequence
                     chipInputs.append(trustedInput)
                     redeemScripts.append(txtmp.outputs[utxo[1]].script)
@@ -445,6 +532,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     chipInputs.append({'value' : tmp, 'sequence' : sequence})
                     redeemScripts.append(bfh(utxo[2]))
 
+            self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
             # Sign all inputs
             firstTransaction = True
             inputIndex = 0

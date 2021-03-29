@@ -142,20 +142,28 @@ class ExchangeBase(Logger):
         return sorted([str(a) for (a, b) in rates.items() if b is not None and len(a)==3])
 
 class Bittrex(ExchangeBase):
-    async def get_rates(self, ccy):
-        json1 = await self.get_json('bittrex.com', '/api/v1.1/public/getticker?market=BTC-RVN')
-        if ccy != "BTC":
-            json2 = await self.get_json('api.coinbase.com', '/v2/exchange-rates?currency=BTC')
-            return {ccy: Decimal(json1['result']['Last'])*Decimal(json2['data']['rates'][ccy])}
-        return {ccy: Decimal(json1['result']['Last'])}
+    #Refer to https://bittrex.github.io/api/v3
 
-class Binance(ExchangeBase):
+    async def get_currencies(self):
+        dicts = await self.get_json('api.bittrex.com',
+                '/v3/markets')
+        return [d['symbol'][4:] for d in dicts if d['symbol'][:4] == 'RVN-']
+
     async def get_rates(self, ccy):
-        json1 = await self.get_json('api.binance.com', '/api/v3/avgPrice?symbol=RVNBTC')
-        if ccy != "BTC":
-            json2 = await self.get_json('api.coinbase.com', '/v2/exchange-rates?currency=BTC')
-            return {ccy: Decimal(json1['price'])*Decimal(json2['data']['rates'][ccy])}
-        return {ccy: Decimal(json1['price'])}
+        dicts = await self.get_json('api.bittrex.com',
+                '/v3/markets/RVN-%s/ticker' % ccy)
+        return {ccy: dicts['lastTradeRate']}
+
+    def history_ccys(self):
+        return CURRENCIES[self.name()]
+
+    async def request_history(self, ccy):
+        dicts = await self.get_json('api.bittrex.com',
+                'v3/markets/RVN-%s/candles/TRADE/DAY_1/recent' % ccy)
+        return dict([(d['startsAt'][:10], d['close']) for d in dicts])
+
+
+#TODO: Add more exchange API's
 
 def dictinvert(d):
     inv = {}
