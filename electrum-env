@@ -26,6 +26,7 @@ else
     pip install safet
     pip install ckcc-protocol
     pip install cmake
+    pip install matplotlib
     pip install vext.pyqt5
     vext -e
 fi

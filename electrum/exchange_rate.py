@@ -23,7 +23,7 @@ from .logging import Logger
 
 DEFAULT_ENABLED = False
 DEFAULT_CURRENCY = "USD"
-DEFAULT_EXCHANGE = "Bittrex"  # default exchange should ideally provide historical rates
+DEFAULT_EXCHANGE = "Coingecko"  # default exchange should ideally provide historical rates
 
 
 # See https://en.wikipedia.org/wiki/ISO_4217
@@ -140,6 +140,28 @@ class ExchangeBase(Logger):
     async def get_currencies(self):
         rates = await self.get_rates('')
         return sorted([str(a) for (a, b) in rates.items() if b is not None and len(a)==3])
+
+class Coingecko(ExchangeBase):
+    #Refer to https://www.coingecko.com/api/documentations/v3
+
+    async def get_currencies(self):
+        dicts = await self.get_json('api.coingecko.com',
+                '/api/v3/coins/ravencoin')
+        return [d['target'] for d in dicts['tickers']]
+
+    async def get_rates(self, ccy):
+        dicts = await self.get_json('api.coingecko.com',
+                '/api/v3/coins/ravencoin/market_chart?vs_currency=%s&days=1' % ccy)
+        return {ccy: dicts['prices'][-1][1]}
+
+    def history_ccys(self):
+        return CURRENCIES[self.name()]
+
+    async def request_history(self, ccy):
+        dicts = await self.get_json('api.coingecko.com',
+                '/api/v3/coins/ravencoin/market_chart?vs_currency=%s&days=max' % ccy)
+        return dict([(datetime.utcfromtimestamp(d[0]/1000).strftime('%Y-%m-%d'), d[1]) for d in dicts['prices']])
+
 
 class Bittrex(ExchangeBase):
     #Refer to https://bittrex.github.io/api/v3
