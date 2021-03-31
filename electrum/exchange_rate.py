@@ -145,9 +145,9 @@ class Coingecko(ExchangeBase):
     #Refer to https://www.coingecko.com/api/documentations/v3
 
     async def get_currencies(self):
-        dicts = await self.get_json('api.coingecko.com',
-                '/api/v3/coins/ravencoin')
-        return [d['target'] for d in dicts['tickers']]
+        values = await self.get_json('api.coingecko.com',
+                '/api/v3/exchange_rates')
+        return [name.upper() for name in values['rates'].keys()]
 
     async def get_rates(self, ccy):
         dicts = await self.get_json('api.coingecko.com',
