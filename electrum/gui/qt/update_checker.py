@@ -23,7 +23,7 @@ class UpdateCheck(QWidget, Logger):
     download_url = "https://github.com/kralverde/electrum-raven/releases"
 
     VERSION_ANNOUNCEMENT_SIGNING_KEYS = (
-        "RXXUX8oQhp97uAbBpoEjQDGFzchD6hHfWD",
+        "RPuQNvDVBC5Q4fXKyfYLjrunbyqiEYckP5",
     )
 
     def __init__(self, main_window, latest_version=None):

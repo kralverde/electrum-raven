@@ -359,53 +359,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
     @test_pin_unlocked
     @set_and_unset_signing
     def sign_message(self, sequence, message, password):
-        message = message.encode('utf8')
-        message_hash = hashlib.sha256(message).hexdigest().upper()
-        # prompt for the PIN before displaying the dialog if necessary
-        client = self.get_client()
-        address_path = self.get_derivation()[2:] + "/%d/%d"%sequence
-        self.handler.show_message("Signing message ...\r\nMessage hash: "+message_hash)
-        try:
-            info = self.get_client().signMessagePrepare(address_path, message)
-            pin = ""
-            if info['confirmationNeeded']:
-                pin = self.handler.get_auth( info ) # does the authenticate dialog and returns pin
-                if not pin:
-                    raise UserWarning(_('Cancelled by user'))
-                pin = str(pin).encode()
-            signature = self.get_client().signMessageSign(pin)
-        except BTChipException as e:
-            if e.sw == 0x6a80:
-                self.give_error("Unfortunately, this message cannot be signed by the Ledger wallet. Only alphanumerical messages shorter than 140 characters are supported. Please remove any extra characters (tab, carriage return) and retry.")
-            elif e.sw == 0x6985:  # cancelled by user
-                return b''
-            elif e.sw == 0x6982:
-                raise  # pin lock. decorator will catch it
-            else:
-                self.give_error(e, True)
-        except UserWarning:
-            self.handler.show_error(_('Cancelled by user'))
-            return b''
-        except Exception as e:
-            self.give_error(e, True)
-        finally:
-            self.handler.finished()
-        # Parse the ASN.1 signature
-        rLength = signature[3]
-        r = signature[4 : 4 + rLength]
-        sLength = signature[4 + rLength + 1]
-        s = signature[4 + rLength + 2:]
-        if rLength == 33:
-            r = r[1:]
-        if sLength == 33:
-            s = s[1:]
-        # And convert it
-
-        # Pad r and s points with 0x00 bytes when the point is small to get valid signature.
-        r_padded = bytes([0x00]) * (32 - len(r)) + r
-        s_padded = bytes([0x00]) * (32 - len(s)) + s
-
-        return bytes([27 + 4 + (signature[0] & 0x01)]) + r_padded + s_padded
+        self.handler.show_error('Signing on ledgers is temporarily disabled')
+        return b''
 
     @test_pin_unlocked
     @set_and_unset_signing
