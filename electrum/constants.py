@@ -100,7 +100,7 @@ class BitcoinTestnet(AbstractNet):
     ADDRTYPE_P2SH = 196
     ADDRTYPE_P2SH_ALT = 196
     SEGWIT_HRP = ""
-    GENESIS = "0000006b444bc2f2ffe627be9d9e7e7a0730000870ef6eb6da46c8eae389df90"
+    GENESIS = "000000ecfc5e6324a079542221d00e10362bdc894d56500c414060eea8a3ad5a"
     DEFAULT_PORTS = {'t': '51001', 's': '51002'}
     DEFAULT_SERVERS = read_json('servers_testnet.json', {})
     CHECKPOINTS = read_json('checkpoints_testnet.json', [])
@@ -143,8 +143,7 @@ class BitcoinSimnet(BitcoinTestnet):
 
 
 # don't import net directly, import the module instead (so that net is singleton)
-#net = BitcoinMainnet
-net = BitcoinTestnet
+net = BitcoinMainnet
 
 def set_simnet():
     global net
