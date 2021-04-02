@@ -112,7 +112,7 @@ class TrezorPlugin(HW_PluginBase):
     minimum_firmware = (1, 6, 0)
     keystore_class = TrezorKeyStore
     minimum_library = (0, 11, 0)
-    maximum_library = (0, 12)
+    maximum_library = (0, 13)
     SUPPORTED_XTYPES = ('standard', 'p2wpkh-p2sh', 'p2wpkh', 'p2wsh-p2sh', 'p2wsh')
     DEVICE_IDS = (TREZOR_PRODUCT_KEY,)
 
@@ -183,7 +183,7 @@ class TrezorPlugin(HW_PluginBase):
         return client
 
     def get_coin_name(self):
-        return "Testnet" if constants.net.TESTNET else "Ravencoin"
+        return "Ravencoin Testnet" if constants.net.TESTNET else "Ravencoin"
 
     def initialize_device(self, device_id, wizard, handler):
         # Initialization method
