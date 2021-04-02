@@ -249,23 +249,20 @@ class tracker_object:
         self.out_num = outs
 
     def tick_in(self):
-
-        self.ticker += 1
-        if self.ticker % 30 == 0:
-            print(self.parsed_string())
-
+        self.log_info()
         self.in_count += 1
 
     def tick_out(self):
-
-        self.ticker += 1
-        if self.ticker % 30 == 0:
-            print(self.parsed_string())
-
+        self.log_info()
         self.out_count += 1
 
+    def log_info(self):
+        self.ticker += 1
+        if self.ticker % 100 == 0:
+            print(self.parsed_string())
+
     def parsed_string(self):
-        'Parsing transaction data...\nTx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
+        return 'Parsing transaction data...\nTx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
             self.tx_count,
             self.tx_num,
             self.in_count,
