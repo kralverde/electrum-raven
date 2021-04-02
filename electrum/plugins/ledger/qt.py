@@ -1,6 +1,6 @@
 from functools import partial
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtWidgets import QInputDialog, QLabel, QVBoxLayout, QLineEdit
 
 from electrum.i18n import _
@@ -29,24 +29,51 @@ class Plugin(LedgerPlugin, QtPluginBase):
         if type(keystore) == self.keystore_class and len(addrs) == 1:
             def show_address():
                 keystore.thread.add(partial(self.show_address, wallet, addrs[0]))
+
             menu.addAction(_("Show on Ledger"), show_address)
+
 
 class Ledger_Handler(QtHandlerBase):
     setup_signal = pyqtSignal()
     auth_signal = pyqtSignal(object)
+    parse_signal = pyqtSignal(object)
 
     def __init__(self, win):
         super(Ledger_Handler, self).__init__(win, 'Ledger')
         self.setup_signal.connect(self.setup_dialog)
         self.auth_signal.connect(self.auth_dialog)
+        self.parse_signal.connect(self.parse_dialog)
+        self.loop_ui = False
 
     def word_dialog(self, msg):
-        response = QInputDialog.getText(self.top_level_window(), "Ledger Wallet Authentication", msg, QLineEdit.Password)
+        response = QInputDialog.getText(self.top_level_window(), "Ledger Wallet Authentication", msg,
+                                        QLineEdit.Password)
         if not response[1]:
             self.word = None
         else:
             self.word = str(response[0])
         self.done.set()
+
+    def parse_dialog(self, ui_tracker):
+        self.clear_dialog()
+        self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
+        label = QLabel('Parsing transaction data...')
+
+        def update():
+            label.setText('Parsing transaction data...\nTx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
+                ui_tracker.values[0],
+                ui_tracker.values[1],
+                ui_tracker.values[2],
+                ui_tracker.values[3],
+                ui_tracker.values[4],
+                ui_tracker.values[5]))
+            if self.loop_ui:
+                QTimer.singleShot(500, update)
+
+        update()
+        vbox = QVBoxLayout(dialog)
+        vbox.addWidget(label)
+        dialog.show()
 
     def message_dialog(self, msg):
         self.clear_dialog()
@@ -78,6 +105,14 @@ class Ledger_Handler(QtHandlerBase):
         self.setup_signal.emit()
         self.done.wait()
         return
+
+    def get_parse(self, ui_tracker):
+        self.loop_ui = True
+        self.clear_dialog()
+        self.parse_signal.emit(ui_tracker)
+
+    def end_parse(self):
+        self.loop_ui = False
 
     def setup_dialog(self):
         self.show_error(_('Initialization of Ledger HW devices is currently disabled.'))

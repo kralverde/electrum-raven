@@ -2,7 +2,9 @@ kralverde's notes
 =====================================
 
 Botched together tweaks:
-
+- Added a UI to ledger to let the user know something is going on for large tx's
+- Added coingecko for more fiat comparison options
+- re-implemented updates
 - Hardware (ledger) support fix
 - Updated defunct default electrumx servers
 - Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
@@ -19,9 +21,8 @@ NOTE: Building binaries may affect raw python performance. You can always reclon
 Running with python3 (recommended for linux/if you have python on your device):
 
 1. sudo apt-get install python3-pyqt5
-2. sudo python3 -m pip install cmake
-3. sudo python3 -m pip install .[fast]
-4. ./run_electrum
+2. insure the following is installed https://electrum.readthedocs.io/en/latest/hardware-linux.html
+3. ./electrum-env
 
 Building executables:
 

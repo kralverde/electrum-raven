@@ -15,6 +15,7 @@ env/
 bin/
 /app.fil
 .idea
+electrum/currencies.json
 
 # icons
 electrum/gui/kivy/theming/light-0.png

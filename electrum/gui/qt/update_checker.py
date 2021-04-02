@@ -19,11 +19,11 @@ from electrum.logging import Logger
 
 
 class UpdateCheck(QWidget, Logger):
-    url = "https://electrum-rvn.nbits.dev/version"
-    download_url = "https://electrum-rvn.nbits.dev/#download"
+    url = "https://raw.githubusercontent.com/kralverde/electrum-raven/master/check-version.json"
+    download_url = "https://github.com/kralverde/electrum-raven/releases"
 
     VERSION_ANNOUNCEMENT_SIGNING_KEYS = (
-        "RBQ6Fd7SJJqLtZXB7mori8erALCeXJSZ2P",
+        "RPuQNvDVBC5Q4fXKyfYLjrunbyqiEYckP5",
     )
 
     def __init__(self, main_window, latest_version=None):
