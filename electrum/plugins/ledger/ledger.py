@@ -440,6 +440,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
         pin = ""
         self.get_client()  # prompt for the PIN before displaying the dialog if necessary
 
+        self.handler.finished()
         self.handler.show_message('Parsing transaction data...\nTx: 0/0\nInputs: 0/0\nOutputs: 0/0')
 
         # Fetch inputs of the transaction to sign
@@ -533,8 +534,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
 
         ui_tracker = tracker_object()
         ui_tracker.init_tx_amt(len(inputs))
-
-        self.handler.get_parse(ui_tracker)
+        self.handler.finished()
+        self.handler.parse_ui(ui_tracker)
 
         try:
             # tx, total tx, curr in, in in tx, curr out, in in out
@@ -563,7 +564,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     chipInputs.append({'value': tmp, 'sequence': sequence})
                     redeemScripts.append(bfh(utxo[2]))
 
-            self.handler.end_parse()
+            self.handler.parse_ui(None, False)
+            self.handler.finished()
             self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
             # Sign all inputs
             firstTransaction = True

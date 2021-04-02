@@ -36,7 +36,7 @@ class Plugin(LedgerPlugin, QtPluginBase):
 class Ledger_Handler(QtHandlerBase):
     setup_signal = pyqtSignal()
     auth_signal = pyqtSignal(object)
-    parse_signal = pyqtSignal(object)
+    parse_signal = pyqtSignal(object, object)
 
     def __init__(self, win):
         super(Ledger_Handler, self).__init__(win, 'Ledger')
@@ -54,20 +54,24 @@ class Ledger_Handler(QtHandlerBase):
             self.word = str(response[0])
         self.done.set()
 
-    def parse_dialog(self, ui_tracker):
-        self.clear_dialog()
-        self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
-        label = QLabel(ui_tracker.parsed_string())
+    def parse_dialog(self, ui_tracker, start):
+        if start:
+            self.loop_ui = True
+            self.clear_dialog()
+            self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
+            label = QLabel(ui_tracker.parsed_string())
 
-        def update():
-            label.setText(ui_tracker.parsed_string())
-            if self.loop_ui:
-                QTimer.singleShot(500, update)
+            def update():
+                label.setText(ui_tracker.parsed_string())
+                if self.loop_ui:
+                    QTimer.singleShot(500, update)
 
-        update()
-        vbox = QVBoxLayout(dialog)
-        vbox.addWidget(label)
-        dialog.show()
+            update()
+            vbox = QVBoxLayout(dialog)
+            vbox.addWidget(label)
+            dialog.show()
+        else:
+            self.loop_ui = False
 
     def message_dialog(self, msg):
         self.clear_dialog()
@@ -100,13 +104,10 @@ class Ledger_Handler(QtHandlerBase):
         self.done.wait()
         return
 
-    def get_parse(self, ui_tracker):
+    def parse_ui(self, ui_tracker, start=True):
         self.loop_ui = True
         self.clear_dialog()
-        self.parse_signal.emit(ui_tracker)
-
-    def end_parse(self):
-        self.loop_ui = False
+        self.parse_signal.emit(ui_tracker, start)
 
     def setup_dialog(self):
         self.show_error(_('Initialization of Ledger HW devices is currently disabled.'))
