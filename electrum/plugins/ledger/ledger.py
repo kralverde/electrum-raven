@@ -2,10 +2,6 @@ from struct import pack, unpack
 import hashlib
 import sys
 import traceback
-import threading
-import time
-
-from electrum.gui.qt.util import WindowModalDialog
 
 from electrum import ecc
 from electrum import constants
@@ -34,9 +30,6 @@ try:
     from btchip.btchipFirmwareWizard import checkFirmware, updateFirmware
     from btchip.btchipException import BTChipException
     from btchip.bitcoinVarint import *
-
-    from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QHBoxLayout, QLabel
-    from PyQt5.QtCore import QTimer
 
     BTCHIP = True
     BTCHIP_DEBUG = False
