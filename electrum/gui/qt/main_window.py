@@ -651,7 +651,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.show_error(_('No donation address for this server'))
             
     def donate_to_dev(self):
-        self.pay_to_URI('raven:RHxgt5fq2QFhxwHLRha719XgVXbdQEU5tS?message=Developer donation')
+        self.pay_to_URI('raven:RDRczYCUeLwXVnrKMYHKYLS1oPc9aCxGnG?message=Developer donation')
 
     def show_about(self):
         QMessageBox.about(self, "Electrum-rvn",
