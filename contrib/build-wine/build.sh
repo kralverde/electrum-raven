@@ -20,9 +20,9 @@ rm "$here"/dist/* -rf
 
 mkdir -p "$CACHEDIR" "$PIP_CACHE_DIR"
 
-#$here/build-secp256k1.sh || fail "build-secp256k1 failed"
+$here/build-secp256k1.sh || fail "build-secp256k1 failed"
 
-#$here/prepare-wine.sh || fail "prepare-wine failed"
+$here/prepare-wine.sh || fail "prepare-wine failed"
 
 info "Resetting modification time in C:\Python..."
 # (Because of some bugs in pyinstaller)
