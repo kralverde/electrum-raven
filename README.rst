@@ -2,7 +2,9 @@ kralverde's notes
 =====================================
 
 Botched together tweaks:
-
+- Added a UI to ledger to let the user know something is going on for large tx's
+- Added coingecko for more fiat comparison options
+- re-implemented updates
 - Hardware (ledger) support fix
 - Updated defunct default electrumx servers
 - Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
