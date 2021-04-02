@@ -57,16 +57,10 @@ class Ledger_Handler(QtHandlerBase):
     def parse_dialog(self, ui_tracker):
         self.clear_dialog()
         self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
-        label = QLabel('Parsing transaction data...')
+        label = QLabel(ui_tracker.parsed_string())
 
         def update():
-            label.setText('Parsing transaction data...\nTx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
-                ui_tracker.values[0],
-                ui_tracker.values[1],
-                ui_tracker.values[2],
-                ui_tracker.values[3],
-                ui_tracker.values[4],
-                ui_tracker.values[5]))
+            label.setText(ui_tracker.parsed_string())
             if self.loop_ui:
                 QTimer.singleShot(500, update)
 

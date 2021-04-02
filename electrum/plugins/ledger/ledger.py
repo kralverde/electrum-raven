@@ -165,8 +165,8 @@ class Ledger_Client():
             self.multiOutputSupported = versiontuple(firmware) >= versiontuple(MULTI_OUTPUT_SUPPORT)
             self.nativeSegwitSupported = versiontuple(firmware) >= versiontuple(SEGWIT_SUPPORT)
             self.segwitSupported = self.nativeSegwitSupported or (
-                        firmwareInfo['specialVersion'] == 0x20 and versiontuple(firmware) >= versiontuple(
-                    SEGWIT_SUPPORT_SPECIAL))
+                    firmwareInfo['specialVersion'] == 0x20 and versiontuple(firmware) >= versiontuple(
+                SEGWIT_SUPPORT_SPECIAL))
 
             if not checkFirmware(firmwareInfo):
                 self.dongleObject.dongle.close()
@@ -221,37 +221,81 @@ class Ledger_Client():
             return False, None, None
         return True, response, response
 
-class tracker_object:
-    def __init__(self, tup):
-        self.values = tup
 
-class modified_btchip(btchip):
+class tracker_object:
+    def __init__(self):
+        # Print info for log / non-gui users
+        self.ticker = 0
+
+        self.tx_count = 0
+        self.tx_num = 0
+        self.in_count = 0
+        self.in_num = 0
+        self.out_count = 0
+        self.out_num = 0
+
+    def init_tx_amt(self, amt):
+        self.tx_num = amt
+
+    def new_tx(self):
+        self.tx_count += 1
+        self.in_count = 0
+        self.in_num = 0
+        self.out_num = 0
+        self.out_count = 0
+
+    def init_io_amt(self, ins, outs):
+        self.in_num = ins
+        self.out_num = outs
+
+    def tick_in(self):
+
+        self.ticker += 1
+        if self.ticker % 30 == 0:
+            print(self.parsed_string())
+
+        self.in_count += 1
+
+    def tick_out(self):
+
+        self.ticker += 1
+        if self.ticker % 30 == 0:
+            print(self.parsed_string())
+
+        self.out_count += 1
+
+    def parsed_string(self):
+        'Parsing transaction data...\nTx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
+            self.tx_count,
+            self.tx_num,
+            self.in_count,
+            self.in_num,
+            self.out_count,
+            self.out_num)
+
+
+class modified_btchip:
 
     def __init__(self, original):
-        self.original = original
         self.dongle = original.dongle
-        self.needKeyCache = original.needKeyCache
 
     # Same code as normal with counters stuck in
     def getTrustedInput(self, ui_tracker, transaction, index):
         result = {}
         # Header
-        apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x00, 0x00]
-        params = bytearray.fromhex("%.8x" % (index))
+        apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x00, 0x00]
+        params = bytearray.fromhex("%.8x" % index)
         params.extend(transaction.version)
         writeVarint(len(transaction.inputs), params)
         apdu.append(len(params))
         apdu.extend(params)
         self.dongle.exchange(bytearray(apdu))
         # Each input
-        ui_tracker.values = (ui_tracker.values[0],
-                      ui_tracker.values[1],
-                      ui_tracker.values[2],
-                      len(transaction.inputs),
-                      ui_tracker.values[4],
-                      len(transaction.outputs))
+
+        ui_tracker.init_io_amt(len(transaction.inputs), len(transaction.outputs))
+
         for trinput in transaction.inputs:
-            apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
+            apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
             params = bytearray(trinput.prevOut)
             writeVarint(len(trinput.script), params)
             apdu.append(len(params))
@@ -267,21 +311,17 @@ class modified_btchip(btchip):
                 params = bytearray(trinput.script[offset: offset + dataLength])
                 if ((offset + dataLength) == len(trinput.script)):
                     params.extend(trinput.sequence)
-                apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, len(params)]
+                apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, len(params)]
                 apdu.extend(params)
                 self.dongle.exchange(bytearray(apdu))
                 offset += dataLength
                 if (offset >= len(trinput.script)):
                     break
-            ui_tracker.values = (ui_tracker.values[0],
-                          ui_tracker.values[1],
-                          ui_tracker.values[2] + 1,
-                          ui_tracker.values[3],
-                          ui_tracker.values[4],
-                          ui_tracker.values[5])
+
+            ui_tracker.tick_in()
 
         # Number of outputs
-        apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
+        apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
         params = []
         writeVarint(len(transaction.outputs), params)
         apdu.append(len(params))
@@ -290,7 +330,7 @@ class modified_btchip(btchip):
         # Each output
         indexOutput = 0
         for troutput in transaction.outputs:
-            apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
+            apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
             params = bytearray(troutput.amount)
             writeVarint(len(troutput.script), params)
             apdu.append(len(params))
@@ -303,19 +343,15 @@ class modified_btchip(btchip):
                     dataLength = blockLength
                 else:
                     dataLength = len(troutput.script) - offset
-                apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, dataLength]
+                apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, dataLength]
                 apdu.extend(troutput.script[offset: offset + dataLength])
                 self.dongle.exchange(bytearray(apdu))
                 offset += dataLength
-            ui_tracker.values = (ui_tracker.values[0],
-                                 ui_tracker.values[1],
-                                 ui_tracker.values[2],
-                                 ui_tracker.values[3],
-                                 ui_tracker.values[4] + 1,
-                                 ui_tracker.values[5])
+
+            ui_tracker.tick_out()
 
         # Locktime
-        apdu = [self.BTCHIP_CLA, self.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, len(transaction.lockTime)]
+        apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00, len(transaction.lockTime)]
         apdu.extend(transaction.lockTime)
         response = self.dongle.exchange(bytearray(apdu))
         result['trustedInput'] = True
@@ -498,7 +534,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
 
         # self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
 
-        ui_tracker = tracker_object((0, len(inputs), 0, 0, 0, 0))
+        ui_tracker = tracker_object()
+        ui_tracker.init_tx_amt(len(inputs))
 
         self.handler.get_parse(ui_tracker)
 
@@ -506,7 +543,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
             # tx, total tx, curr in, in in tx, curr out, in in out
             # Get trusted inputs from the original transactions
             for utxo in inputs:
-                ui_tracker.values = (ui_tracker.values[0] + 1, ui_tracker.values[1], 0, 0, 0, 0)
+
+                ui_tracker.new_tx()
 
                 sequence = int_to_hex(utxo[5], 4)
                 if segwitTransaction:
