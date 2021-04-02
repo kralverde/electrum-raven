@@ -44,6 +44,9 @@ class Ledger_Handler(QtHandlerBase):
         self.auth_signal.connect(self.auth_dialog)
         self.parse_signal.connect(self.parse_dialog)
         self.loop_ui = False
+        #Trolled by garbage collection
+        self.timer = QTimer()
+        self.ui_tx_label = QLabel('')
 
     def word_dialog(self, msg):
         response = QInputDialog.getText(self.top_level_window(), "Ledger Wallet Authentication", msg,
@@ -56,22 +59,20 @@ class Ledger_Handler(QtHandlerBase):
 
     def parse_dialog(self, ui_tracker, start):
         if start:
-            self.loop_ui = True
             self.clear_dialog()
             self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
-            label = QLabel(ui_tracker.parsed_string())
 
             def update():
-                label.setText(ui_tracker.parsed_string())
-                if self.loop_ui:
-                    QTimer.singleShot(500, update)
+                self.ui_tx_label.setText(ui_tracker.parsed_string())
 
             update()
+            self.timer.timeout.connect(update)
+            self.timer.start(500)
             vbox = QVBoxLayout(dialog)
-            vbox.addWidget(label)
+            vbox.addWidget(self.ui_tx_label)
             dialog.show()
         else:
-            self.loop_ui = False
+            self.timer.stop()
 
     def message_dialog(self, msg):
         self.clear_dialog()
@@ -105,8 +106,6 @@ class Ledger_Handler(QtHandlerBase):
         return
 
     def parse_ui(self, ui_tracker, start=True):
-        self.loop_ui = True
-        self.clear_dialog()
         self.parse_signal.emit(ui_tracker, start)
 
     def setup_dialog(self):
