@@ -45,6 +45,7 @@ class Ledger_Handler(QtHandlerBase):
         self.parse_signal.connect(self.parse_dialog)
         self.loop_ui = False
         #Trolled by garbage collection
+        self.ui_tracker = None
         self.timer = QTimer()
         self.ui_tx_label = QLabel('')
 
@@ -58,12 +59,16 @@ class Ledger_Handler(QtHandlerBase):
         self.done.set()
 
     def parse_dialog(self, ui_tracker, start):
+        
+        #Why do I need to do this?
+        self.ui_tx_label = QLabel('')
         if start:
+            self.ui_tracker = ui_tracker
             self.clear_dialog()
             self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
 
             def update():
-                self.ui_tx_label.setText(ui_tracker.parsed_string())
+                self.ui_tx_label.setText(self.ui_tracker.parsed_string())
 
             update()
             self.timer.timeout.connect(update)
