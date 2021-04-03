@@ -440,9 +440,6 @@ class Ledger_KeyStore(Hardware_KeyStore):
         pin = ""
         self.get_client()  # prompt for the PIN before displaying the dialog if necessary
 
-        self.handler.finished()
-        self.handler.show_message('Parsing transaction data...\nTx: 0/0\nInputs: 0/0\nOutputs: 0/0')
-
         # Fetch inputs of the transaction to sign
         derivations = self.get_tx_derivations(tx)
         for txin in tx.inputs():
