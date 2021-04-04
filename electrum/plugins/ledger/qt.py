@@ -1,6 +1,6 @@
 from functools import partial
 
-from PyQt5.QtCore import pyqtSignal, QTimer
+from PyQt5.QtCore import pyqtSignal, QTimer, Qt
 from PyQt5.QtWidgets import QInputDialog, QLabel, QVBoxLayout, QLineEdit
 
 from electrum.i18n import _
@@ -75,6 +75,11 @@ class Ledger_Handler(QtHandlerBase):
             self.timer.start(500)
             vbox = QVBoxLayout(dialog)
             vbox.addWidget(self.ui_tx_label)
+
+            # Remove close button
+            dialog.setWindowFlags(dialog.windowFlags() | Qt.CustomizeWindowHint)
+            dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowCloseButtonHint)
+
             dialog.show()
         else:
             self.timer.stop()

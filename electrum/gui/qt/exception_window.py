@@ -79,15 +79,6 @@ class Exception_Window(BaseCrashReporter, QWidget, MessageBoxMixin, Logger):
 
         buttons = QHBoxLayout()
 
-        report_button = QPushButton(_('Send Bug Report'))
-        report_button.clicked.connect(self.send_report)
-        report_button.setIcon(read_QIcon("tab_send.png"))
-        buttons.addWidget(report_button)
-
-        never_button = QPushButton(_('Never'))
-        never_button.clicked.connect(self.show_never)
-        buttons.addWidget(never_button)
-
         close_button = QPushButton(_('Not Now'))
         close_button.clicked.connect(self.close)
         buttons.addWidget(close_button)
