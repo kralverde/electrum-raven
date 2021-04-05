@@ -2,13 +2,14 @@ kralverde's notes
 =====================================
 
 Botched together tweaks:
-1. Added a UI to ledger to let the user know something is going on for large tx's
-2. Added coingecko for more fiat comparison options
-3. re-implemented updates
-4. Hardware (ledger) support fix
-5. Updated defunct default electrumx servers
-6. Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
-7. Crude wine and linux appimage docker fixes
+
+- Added a UI to ledger to let the user know something is going on for large tx's
+- Added coingecko for more fiat comparison options
+- re-implemented updates
+- Hardware (ledger) support fix
+- Updated defunct default electrumx servers
+- Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
+- Crude wine and linux appimage docker fixes
 
 Running the software presteps (tested on ubuntu 20.04):
 
@@ -27,8 +28,6 @@ Running with python3 (recommended for linux/if you have python on your device):
 Building executables:
 
 If you are having trouble building binaries check https://github.com/kralverde/electrum-raven/releases (You should try and build these yourself first!!!)
-
-NOTE: These executables are a little bloated because my hotfix for getting a correct header base is literally sticking a zipped blockchain_headers file in the executable. Currently working on getting the client to sync the whole chain.
 
 Windows:
 
@@ -61,6 +60,10 @@ Linux Appimage:
         ./build.sh
 4. The generated binaries are in ./dist
 5. Refer to https://github.com/kralverde/electrum-raven/tree/master/contrib/build-linux/appimage for more information.
+
+OSX:
+
+Sorry, Apple doesn't like developers. We will work on making an OSX app, but for now, try running it with python or running a .exe binary with wine.
 
 Other docker build files are currently broken
 
