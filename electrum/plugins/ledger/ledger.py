@@ -234,6 +234,8 @@ class tracker_object:
         self.out_count = 0
         self.out_num = 0
 
+        self.is_long_time = False
+
     def init_tx_amt(self, amt):
         self.tx_num = amt
 
@@ -247,6 +249,8 @@ class tracker_object:
     def init_io_amt(self, ins, outs):
         self.in_num = ins
         self.out_num = outs
+        if ins + outs > 500:
+            self.is_long_time = True
 
     def tick_in(self):
         self.log_info()
@@ -262,13 +266,17 @@ class tracker_object:
             print(self.parsed_string())
 
     def parsed_string(self):
-        return 'Parsing transaction data...\nTx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
+        line = 'Parsing transaction data...\n'
+        if self.is_long_time:
+            line += 'It looks there is a lot of information.\nPlease ensure your ledger remains unlocked.\n'
+        line += 'Tx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
             self.tx_count,
             self.tx_num,
             self.in_count,
             self.in_num,
             self.out_count,
             self.out_num)
+        return line
 
 
 class modified_btchip:
