@@ -2,13 +2,13 @@ kralverde's notes
 =====================================
 
 Botched together tweaks:
-- Added a UI to ledger to let the user know something is going on for large tx's
-- Added coingecko for more fiat comparison options
-- re-implemented updates
-- Hardware (ledger) support fix
-- Updated defunct default electrumx servers
-- Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
-- Crude wine and linux appimage docker fixes
+1. Added a UI to ledger to let the user know something is going on for large tx's
+2. Added coingecko for more fiat comparison options
+3. re-implemented updates
+4. Hardware (ledger) support fix
+5. Updated defunct default electrumx servers
+6. Implemented an automatic blockchain base install (based on https://github.com/standard-error/electrum-raven/releases/tag/3.3.8-rvn3)
+7. Crude wine and linux appimage docker fixes
 
 Running the software presteps (tested on ubuntu 20.04):
 
