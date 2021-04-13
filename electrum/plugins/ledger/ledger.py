@@ -263,7 +263,7 @@ class tracker_object:
     def log_info(self):
         self.ticker += 1
         if self.ticker % 100 == 0:
-            print(self.parsed_string())
+            _logger.info(self.parsed_string())
 
     def parsed_string(self):
         line = 'Parsing transaction data...\n'
