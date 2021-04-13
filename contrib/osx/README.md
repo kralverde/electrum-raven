@@ -26,7 +26,7 @@ This guide explains how to build Electrum binaries for macOS systems.
 ```
    curl https://bootstrap.pypa.io/get-pip.py | python3
 ```
-- Install cmake to build e.g., kawpow
+- Install cmake to build kawpow
 ```
    brew install cmake
 ```
@@ -38,51 +38,28 @@ This guide explains how to build Electrum binaries for macOS systems.
 
 This creates both a folder named Electrum.app and the .dmg file.
 
-## Building version independent binaries (untested for electrum-raven)
+## Building MacOS/OS x version independent binaries 
 
-This needs to be done on a system running macOS or OS X. We use El Capitan (10.11.6) as building it
-on High Sierra (or later) makes the binaries [incompatible with older versions](https://github.com/pyinstaller/pyinstaller/issues/1191).
+- Use OS X El Capitan (10.11.6). Older or newer versions do not work due to Xcode requirements. 
+  [Older MacOS and OS X versions are provided by apple](https://support.apple.com/en-us/HT211683).
+  You can use [VMware Fusion](https://www.vmware.com/nl/products/fusion.html) to set up virtual MacOS/OS X environments.
+- Install [Xcode 8.2](https://developer.apple.com/download/more/). Requires an apple account login.
+- Install [Homebrew](https://brew.sh/)
+- Make sure Xcode is "selected"
+```
+  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer/
+```
+- Install cmake to build kawpow
+```
+   brew install cmake
+```
+- Build electrum-raven
+```
+   cd electrum-raven
+   ./contrib/osx/make_osx
+```
 
-Another factor for the minimum supported macOS version is the
-[bundled Qt version](https://github.com/spesmilo/electrum/issues/3685).
-
-Before starting, make sure that the Xcode command line tools are installed (e.g. you have `git`).
-
-#### Get Xcode
-
-Building the QR scanner (CalinsQRReader) requires full Xcode (not just command line tools).
-
-The last Xcode version compatible with El Capitan is Xcode 8.2.1
-
-Get it from [here](https://developer.apple.com/download/more/).
-
-Unfortunately, you need an "Apple ID" account.
-
-After downloading, uncompress it.
-
-Make sure it is the "selected" xcode (e.g.):
-
-    sudo xcode-select -s $HOME/Downloads/Xcode.app/Contents/Developer/
-
-#### (Optional) Build QR scanner separately on newer Mac 
-
-Alternatively, you can try building just the QR scanner on newer macOS.
-
-On newer Mac, run:
-
-    pushd contrib/osx/CalinsQRReader; xcodebuild; popd
-    cp -r contrib/osx/CalinsQRReader/build prebuilt_qr
-
-Move `prebuilt_qr` to El Capitan: `contrib/osx/CalinsQRReader/prebuilt_qr`.
-
-
-#### Build Electrum
-
-    cd electrum-raven
-    ./contrib/osx/make_osx
-    
 This creates both a folder named Electrum.app and the .dmg file.
-
 
 ## Building the image deterministically (WIP) (untested for electrum-raven)
 The usual way to distribute macOS applications is to use image files containing the 
