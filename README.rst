@@ -63,7 +63,12 @@ Linux Appimage:
 
 OSX:
 
-Sorry, Apple doesn't like developers. We will work on making an OSX app, but for now, try running it with python or running a .exe binary with wine.
+Thanks to Jeroz#2560 we have a working osx build script!
+
+Refer to https://github.com/kralverde/electrum-raven/blob/master/contrib/osx/README.md
+
+Generated binaries will be in ./dist
+
 
 Other docker build files are currently broken
 
