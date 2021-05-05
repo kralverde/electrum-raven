@@ -220,6 +220,10 @@ class Commands:
         sh = bitcoin.address_to_scripthash(address)
         return self.network.run_from_another_thread(self.network.get_history_for_scripthash(sh))
 
+    @command('n')
+    def getaddressscripthash(self, address):
+        return bitcoin.address_to_scripthash(address)
+
     @command('w')
     def listunspent(self):
         """List unspent outputs. Returns the list of unspent transaction
@@ -237,6 +241,18 @@ class Commands:
         """
         sh = bitcoin.address_to_scripthash(address)
         return self.network.run_from_another_thread(self.network.listunspent_for_scripthash(sh))
+
+    @command('n')
+    def getaddressassets(self, address):
+        """Returns the Asset list of any address. Note: This
+        is a walletless server query, results are not checked by SPV.
+        """
+        sh = bitcoin.address_to_scripthash(address)
+        return self.network.run_from_another_thread(self.network.listasset_for_address(sh))
+
+    @command('n')
+    def getassetdata(self, name):
+        return self.network.run_from_another_thread(self.network.getmeta_for_asset(name))
 
     @command('')
     def serialize(self, jsontx):

@@ -2,25 +2,16 @@
   "rvn4lyfe.com": {
     "pruning": "-",
     "s": "50002",
-    "t": "50001",
     "version": "1.4"
   },
   "electrum1.rvn.rocks": {
 	  "pruning": "-",
 	  "s": "50002",
-	  "t": "50001",
 	  "version": "1.4"
   },
   "electrum2.rvn.rocks": {
 	  "pruning": "-",
 	  "s": "50002",
-	  "t": "50001",
 	  "version": "1.4"
-  },
-  "electrum-rvn.dnsalias.net": {
-    "pruning": "-",
-    "s": "50002",
-    "t": "50001",
-    "version": "1.4"
   }
 }

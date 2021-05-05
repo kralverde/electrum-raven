@@ -1051,6 +1051,18 @@ class Network(Logger):
 
     @best_effort_reliable
     @catch_server_exceptions
+    async def listasset_for_address(self, sh: str) -> List[dict]:
+        if not is_hash256_str(sh):
+            raise Exception(f"{repr(sh)} is not a scripthash")
+        return await self.interface.session.send_request('blockchain.scripthash.listassets', [sh])
+
+    @best_effort_reliable
+    @catch_server_exceptions
+    async def getmeta_for_asset(self, name: str) -> List[dict]:
+        return await self.interface.session.send_request('blockchain.asset.get_meta', [name])
+
+    @best_effort_reliable
+    @catch_server_exceptions
     async def get_balance_for_scripthash(self, sh: str) -> dict:
         if not is_hash256_str(sh):
             raise Exception(f"{repr(sh)} is not a scripthash")
