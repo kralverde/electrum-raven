@@ -1068,6 +1068,13 @@ class Network(Logger):
             raise Exception(f"{repr(sh)} is not a scripthash")
         return await self.interface.session.send_request('blockchain.scripthash.get_balance', [sh])
 
+    @best_effort_reliable
+    @catch_server_exceptions
+    async def get_asset_balance_for_scripthash(self, sh: str) -> dict:
+        if not is_hash256_str(sh):
+            raise Exception(f"{repr(sh)} is not a scripthash")
+        return await self.interface.session.send_request('blockchain.scripthash.get_asset_balance', [sh])
+
     def blockchain(self) -> Blockchain:
         interface = self.interface
         if interface and interface.blockchain is not None:

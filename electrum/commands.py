@@ -251,6 +251,21 @@ class Commands:
         return self.network.run_from_another_thread(self.network.listasset_for_address(sh))
 
     @command('n')
+    def getassetaddressbalance(self, address):
+        """Return the asset balance of any address. Note: This is a walletless
+        server query, results are not checked by SPV.
+        """
+        sh = bitcoin.address_to_scripthash(address)
+        out = self.network.run_from_another_thread(self.network.get_asset_balance_for_scripthash(sh))
+        for key, value in out["confirmed"].items():
+            val = str(Decimal(value) / COIN)
+            out["confirmed"][key] = val
+        for key, value in out["unconfirmed"].items():
+            val = str(Decimal(value) / COIN)
+            out["unconfirmed"][key] = val
+        return out
+
+    @command('n')
     def getassetdata(self, name):
         return self.network.run_from_another_thread(self.network.getmeta_for_asset(name))
 
