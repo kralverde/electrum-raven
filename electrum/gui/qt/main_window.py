@@ -3022,6 +3022,18 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         block_ex_combo.currentIndexChanged.connect(on_be)
         gui_widgets.append((block_ex_label, block_ex_combo))
 
+        ipfs_explorers = sorted(util.ipfs_explorer_info().keys())
+        msg = _('Choose which online IPFS explorer to use for functions that open a web browser')
+        ipfs_ex_label = HelpLabel(_('Online IPFS Explorer') + ':', msg)
+        ipfs_ex_combo = QComboBox()
+        ipfs_ex_combo.addItems(ipfs_explorers)
+        ipfs_ex_combo.setCurrentIndex(ipfs_ex_combo.findText(util.ipfs_explorer(self.config)))
+        def on_ie(x):
+            ie_result = ipfs_explorers[ipfs_ex_combo.currentIndex()]
+            self.config.set_key('ipfs_explorer', ie_result, True)
+        ipfs_ex_combo.currentIndexChanged.connect(on_ie)
+        gui_widgets.append((ipfs_ex_label, ipfs_ex_combo))
+
         from electrum import qrscanner
         system_cameras = qrscanner._find_system_cameras()
         qr_combo = QComboBox()

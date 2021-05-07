@@ -655,20 +655,51 @@ mainnet_block_explorers = {
                         {'tx': 'tx/', 'addr': 'address/'}),
     'rvn.traysi.org': ('http://rvn.traysi.org/',
                         {'tx': 'tx/', 'addr': 'address/'}),
+    'rvn.cryptoscope.io': ('https://rvn.cryptoscope.io/',
+                        {'tx': 'tx/?txid=', 'addr': 'address/?address='}),
 }
 
 testnet_block_explorers = {
     'ravencoin.network': ('https://testnet.ravencoin.network/',
                         {'tx': 'tx/', 'addr': 'address/'}),
+    'rvn.cryptoscope.io': ('https://rvnt.cryptoscope.io/',
+                        {'tx': 'tx/?txid=', 'addr': 'address/?address='}),
 }
+
+ipfs_explorers = {
+    'ipfs.io': ('https://ipfs.io/',
+                {'ipfs': 'ipfs/'}),
+}
+
+def ipfs_explorer_info():
+    return ipfs_explorers
+
+def ipfs_explorer(config: 'SimpleConfig') -> str:
+    default_ = 'ipfs.io'
+    ie_key = config.get('ipfs', default_)
+    ie = ipfs_explorer_info().get(ie_key)
+    return ie_key if ie is not None else default_
+
+def ipfs_explorer_tuple(config: 'SimpleConfig') -> Optional[Tuple[str, dict]]:
+    return ipfs_explorer_info().get(ipfs_explorer(config))
+
+def ipfs_explorer_URL(config: 'SimpleConfig', kind: str, item: str) -> Optional[str]:
+    ie_tuple = ipfs_explorer_tuple(config)
+    if not ie_tuple:
+        return
+    explorer_url, explorer_dict = ie_tuple
+    kind_str = explorer_dict.get(kind)
+    if kind_str is None:
+        return
+    url_parts = [explorer_url, kind_str, item]
+    return ''.join(url_parts)
 
 def block_explorer_info():
     from . import constants
     return mainnet_block_explorers if not constants.net.TESTNET else testnet_block_explorers
 
 def block_explorer(config: 'SimpleConfig') -> str:
-    from . import constants
-    default_ = 'ravencoin.network' if not constants.net.TESTNET else 'rvn.traysi.org'
+    default_ = 'rvn.cryptoscope.io'
     be_key = config.get('block_explorer', default_)
     be = block_explorer_info().get(be_key)
     return be_key if be is not None else default_

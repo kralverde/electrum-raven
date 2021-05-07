@@ -361,7 +361,7 @@ class HistoryModel(QAbstractItemModel, Logger):
             HistoryColumns.STATUS_ICON: '',
             HistoryColumns.STATUS_TEXT: _('Date'),
             HistoryColumns.DESCRIPTION: _('Description'),
-            HistoryColumns.NAME: _('Name'),
+            HistoryColumns.NAME: _('Asset'),
             HistoryColumns.COIN_VALUE: _('Amount'),
             HistoryColumns.RUNNING_COIN_BALANCE: _('Balance'),
             HistoryColumns.FIAT_VALUE: fiat_title,
