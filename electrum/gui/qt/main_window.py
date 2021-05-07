@@ -167,10 +167,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.send_tab = self.create_send_tab()
         self.receive_tab = self.create_receive_tab()
         self.addresses_tab = self.create_addresses_tab()
+        self.assets_tab = self.create_assets_tab()
         self.utxo_tab = self.create_utxo_tab()
         self.console_tab = self.create_console_tab()
         self.contacts_tab = self.create_contacts_tab()
         tabs.addTab(self.create_history_tab(), read_QIcon("tab_history.png"), _('History'))
+        tabs.addTab(self.assets_tab, read_QIcon("tab_history.png"), _('Assets'))
         tabs.addTab(self.send_tab, read_QIcon("tab_send.png"), _('Send'))
         tabs.addTab(self.receive_tab, read_QIcon("tab_receive.png"), _('Receive'))
 
@@ -1939,6 +1941,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             vbox.addLayout(toolbar)
         vbox.addWidget(l)
         return w
+
+    def create_assets_tab(self):
+        from .asset_list import AssetList
+        self.asset_list = l = AssetList(self)
+        toolbar = l.create_toolbar(self.config)
+        return self.create_list_tab(l, toolbar)
 
     def create_addresses_tab(self):
         from .address_list import AddressList
