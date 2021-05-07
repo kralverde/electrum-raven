@@ -79,12 +79,13 @@ class HistoryColumns(IntEnum):
     STATUS_ICON = 0
     STATUS_TEXT = 1
     DESCRIPTION = 2
-    COIN_VALUE = 3
-    RUNNING_COIN_BALANCE = 4
-    FIAT_VALUE = 5
-    FIAT_ACQ_PRICE = 6
-    FIAT_CAP_GAINS = 7
-    TXID = 8
+    NAME = 3
+    COIN_VALUE = 4
+    RUNNING_COIN_BALANCE = 5
+    FIAT_VALUE = 6
+    FIAT_ACQ_PRICE = 7
+    FIAT_CAP_GAINS = 8
+    TXID = 9
 
 class HistorySortModel(QSortFilterProxyModel):
     def lessThan(self, source_left: QModelIndex, source_right: QModelIndex):
@@ -151,8 +152,9 @@ class HistoryModel(QAbstractItemModel, Logger):
                     (conf, -status, -height, -txpos),
                 HistoryColumns.STATUS_TEXT: status_str,
                 HistoryColumns.DESCRIPTION: tx_item['label'],
-                HistoryColumns.COIN_VALUE:  tx_item['value'].value,
-                HistoryColumns.RUNNING_COIN_BALANCE: tx_item['balance'].value,
+                HistoryColumns.NAME: tx_item['value']['ASSETS'].keys(),
+                HistoryColumns.COIN_VALUE:  tx_item['value'],
+                HistoryColumns.RUNNING_COIN_BALANCE: tx_item['balance'],
                 HistoryColumns.FIAT_VALUE:
                     tx_item['fiat_value'].value if 'fiat_value' in tx_item else None,
                 HistoryColumns.FIAT_ACQ_PRICE:
@@ -176,7 +178,7 @@ class HistoryModel(QAbstractItemModel, Logger):
                     and self.parent.wallet.invoices.paid.get(tx_hash):
                 return QVariant(read_QIcon("seal"))
             elif col in (HistoryColumns.DESCRIPTION, HistoryColumns.COIN_VALUE) \
-                    and role == Qt.ForegroundRole and tx_item['value'].value < 0:
+                    and role == Qt.ForegroundRole and tx_item['value']['RVN'] < 0:
                 red_brush = QBrush(QColor("#BC1E1E"))
                 return QVariant(red_brush)
             elif col == HistoryColumns.FIAT_VALUE and role == Qt.ForegroundRole \
@@ -188,14 +190,38 @@ class HistoryModel(QAbstractItemModel, Logger):
             return QVariant(status_str)
         elif col == HistoryColumns.DESCRIPTION:
             return QVariant(tx_item['label'])
+        elif col == HistoryColumns.NAME:
+            n_str = ''
+            value = tx_item['value']['RVN']
+            if value != 0:
+                n_str += '\n'
+            for key in tx_item['value']['ASSETS']:
+                n_str += key
+                n_str += '\n'
+            return QVariant(n_str[:-1])
         elif col == HistoryColumns.COIN_VALUE:
-            value = tx_item['value'].value
-            v_str = self.parent.format_amount(value, is_diff=True, whitespaces=True)
-            return QVariant(v_str)
+            v_str = ''
+            value = tx_item['value']['RVN']
+            if value != 0:
+                v_str += self.parent.format_amount(value, is_diff=True, whitespaces=True)
+                v_str += '\n'
+            for key in tx_item['value']['ASSETS']:
+                v = tx_item['value']['ASSETS'][key]
+                v_s = self.parent.format_amount(v, is_diff=True, whitespaces=True)
+                v_str += (v_s+'\n')
+            return QVariant(v_str[:-1])
         elif col == HistoryColumns.RUNNING_COIN_BALANCE:
-            balance = tx_item['balance'].value
-            balance_str = self.parent.format_amount(balance, whitespaces=True)
-            return QVariant(balance_str)
+            b_str = ''
+            value = tx_item['value']['RVN']
+            balance = tx_item['balance']['RVN']
+            if value != 0:
+                b_str += self.parent.format_amount(balance, whitespaces=True)
+                b_str += '\n'
+            for key in tx_item['balance']['ASSETS']:
+                b = tx_item['balance']['ASSETS'][key]
+                b_s = self.parent.format_amount(b, is_diff=True, whitespaces=True)
+                b_str += (b_s+'\n')
+            return QVariant(b_str[:-1])
         elif col == HistoryColumns.FIAT_VALUE and 'fiat_value' in tx_item:
             value_str = self.parent.fx.format_fiat(tx_item['fiat_value'].value)
             return QVariant(value_str)
@@ -240,7 +266,7 @@ class HistoryModel(QAbstractItemModel, Logger):
         if fx: fx.history_used_spot = False
         r = self.parent.wallet.get_full_history(domain=self.get_domain(), from_timestamp=None, to_timestamp=None, fx=fx)
         self.set_visibility_of_columns()
-        transactions = [t for t in r['transactions'] if not t['is_asset']]
+        transactions = [t for t in r['transactions'] if t]#['value']['RVN'] != 0]
         if transactions == list(self.transactions.values()):
             return
         old_length = len(self.transactions)
@@ -334,6 +360,7 @@ class HistoryModel(QAbstractItemModel, Logger):
             HistoryColumns.STATUS_ICON: '',
             HistoryColumns.STATUS_TEXT: _('Date'),
             HistoryColumns.DESCRIPTION: _('Description'),
+            HistoryColumns.NAME: _('Name'),
             HistoryColumns.COIN_VALUE: _('Amount'),
             HistoryColumns.RUNNING_COIN_BALANCE: _('Balance'),
             HistoryColumns.FIAT_VALUE: fiat_title,

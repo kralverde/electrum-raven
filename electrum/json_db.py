@@ -42,7 +42,7 @@ OLD_SEED_VERSION = 4        # electrum versions < 2.0
 NEW_SEED_VERSION = 11       # electrum versions >= 2.0
 FINAL_SEED_VERSION = 18     # electrum >= 2.7 will set this to prevent
                             # old versions from overwriting new format
-
+RAVENCOIN_SEED_VERSION = 20
 
 class JsonDBJsonEncoder(util.MyEncoder):
     def default(self, obj):
@@ -63,7 +63,7 @@ class JsonDB(Logger):
         if raw:  # loading existing db
             self.load_data(raw)
         else:  # creating new db
-            self.put('seed_version', FINAL_SEED_VERSION)
+            self.put('seed_version', RAVENCOIN_SEED_VERSION)
             self._after_upgrade_tasks()
 
     def set_modified(self, b):
@@ -193,7 +193,7 @@ class JsonDB(Logger):
         return result
 
     def requires_upgrade(self):
-        return self.get_seed_version() < FINAL_SEED_VERSION
+        return self.get_seed_version() < RAVENCOIN_SEED_VERSION
 
     @profiler
     def upgrade(self):
@@ -210,7 +210,8 @@ class JsonDB(Logger):
         self._convert_version_16()
         self._convert_version_17()
         self._convert_version_18()
-        self.put('seed_version', FINAL_SEED_VERSION)  # just to be sure
+        self._convert_version_20()
+        self.put('seed_version', RAVENCOIN_SEED_VERSION)  # just to be sure
 
         self._after_upgrade_tasks()
 
@@ -434,6 +435,13 @@ class JsonDB(Logger):
         self.put('verified_tx3', None)
         self.put('seed_version', 18)
 
+    def _convert_version_20(self): # Just remove the history and redownload all of the tx's
+        if not self._is_upgrade_method_needed(18, 18):
+            return
+        self._load_transactions()
+        self.clear_history()
+        self.put('stored_height', 0)
+
     # def _convert_version_19(self):
     #     TODO for "next" upgrade:
     #       - move "pw_hash_version" from keystore to storage
@@ -489,16 +497,16 @@ class JsonDB(Logger):
     def get_seed_version(self):
         seed_version = self.get('seed_version')
         if not seed_version:
-            seed_version = OLD_SEED_VERSION if len(self.get('master_public_key','')) == 128 else NEW_SEED_VERSION
-        if seed_version > FINAL_SEED_VERSION:
+            seed_version = OLD_SEED_VERSION if len(self.get('master_public_key','')) == 128 else RAVENCOIN_SEED_VERSION
+        if seed_version > RAVENCOIN_SEED_VERSION:
             raise WalletFileException('This version of Electrum is too old to open this wallet.\n'
                                       '(highest supported storage version: {}, version of this file: {})'
-                                      .format(FINAL_SEED_VERSION, seed_version))
+                                      .format(RAVENCOIN_SEED_VERSION, seed_version))
         if seed_version==14 and self.get('seed_type') == 'segwit':
             self._raise_unsupported_version(seed_version)
         if seed_version >=12:
             return seed_version
-        if seed_version not in [OLD_SEED_VERSION, NEW_SEED_VERSION]:
+        if seed_version not in [OLD_SEED_VERSION, RAVENCOIN_SEED_VERSION]:
             self._raise_unsupported_version(seed_version)
         return seed_version
 

@@ -510,9 +510,8 @@ class Abstract_Wallet(AddressSynchronizer):
                 'confirmations': tx_mined_status.conf,
                 'timestamp': timestamp,
                 'incoming': True if value['RVN']>0 else False,
-                'value': Satoshis(value['RVN']),
-                'balance': Satoshis(balance['RVN']),
-                'is_asset': len(value['ASSETS']) > 0,
+                'value': value,
+                'balance': balance,
                 'date': timestamp_to_datetime(timestamp),
                 'label': self.get_label(tx_hash),
                 'txpos_in_block': tx_mined_status.txpos,
@@ -547,9 +546,9 @@ class Abstract_Wallet(AddressSynchronizer):
             out.append(item)
         # add summary
         if out:
-            b, v = out[0]['balance'].value, out[0]['value'].value
+            b, v = out[0]['balance']['RVN'], out[0]['value']['RVN']
             start_balance = None if b is None or v is None else b - v
-            end_balance = out[-1]['balance'].value
+            end_balance = out[-1]['balance']['RVN']
             if from_timestamp is not None and to_timestamp is not None:
                 start_date = timestamp_to_datetime(from_timestamp)
                 end_date = timestamp_to_datetime(to_timestamp)
