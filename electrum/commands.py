@@ -248,7 +248,7 @@ class Commands:
         is a walletless server query, results are not checked by SPV.
         """
         sh = bitcoin.address_to_scripthash(address)
-        return self.network.run_from_another_thread(self.network.listasset_for_address(sh))
+        return self.network.run_from_another_thread(self.network.listasset_for_scripthash(sh))
 
     @command('n')
     def getassetaddressbalance(self, address):

@@ -123,8 +123,8 @@ class AddressList(MyTreeView):
         for address in addr_list:
             num = self.wallet.get_address_history_len(address)
             label = self.wallet.labels.get(address, '')
-            c, u, x = self.wallet.get_addr_balance(address)
-            balance = c + u + x
+            bal = self.wallet.get_addr_balance(address)
+            balance = bal['RVN'][0] + bal['RVN'][1] + bal['RVN'][2]
             is_used_and_empty = self.wallet.is_used(address) and balance == 0
             if self.show_used == 1 and (balance or is_used_and_empty):
                 continue

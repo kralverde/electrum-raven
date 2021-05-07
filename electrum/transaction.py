@@ -52,6 +52,69 @@ NO_SIGNATURE = 'ff'
 PARTIAL_TXN_HEADER_MAGIC = b'EPTF\xff'
 
 
+TX_SCRIPTHASH = 0
+TX_PUBKEYHASH = 1
+
+TX_TRANSFER_ASSET = 0
+TX_NEW_ASSET = 1
+TX_REISSUE_ASSET = 2
+
+OP_HASH160 = 0xa9
+OP_EQUAL = 0x87
+
+RVN_R = 114
+RVN_V = 118
+RVN_N = 110
+RVN_Q = 113
+RVN_T = 116
+RVN_O = 111
+
+OP_RVN_ASSET = 0xc0
+OP_RESERVED = 0x50
+
+
+def search_for_rvn(script: bytes, start: int): #TODO Use python
+    index = -1
+    if script[start] == RVN_R:
+        if script[start+1] == RVN_V:
+            if script[start+2] == RVN_N:
+                index = start + 3
+    elif script[start+1] == RVN_R:
+        if script[start+2] == RVN_V:
+            if script[start+3] == RVN_N:
+                index = start + 4
+    return index
+
+def is_asset_script(script: bytes):
+    '''
+    Returns a tuple of (type, is owner?, starting index)
+    if is a valid asset script
+
+    Returns None otherwise.
+    '''
+    if len(script) > 31:
+        script_type = TX_SCRIPTHASH \
+            if script[0] == OP_HASH160 and script[1] == 0x14 and script[22] == OP_EQUAL \
+            else TX_PUBKEYHASH
+
+        index = -1
+        if script_type == TX_SCRIPTHASH and script[23] == OP_RVN_ASSET:
+            index = search_for_rvn(script, 25)
+        elif script[25] == OP_RVN_ASSET:
+            index = search_for_rvn(script, 27)
+
+        if index > 0:
+            if script[index] == RVN_T:
+                return TX_TRANSFER_ASSET, False, (index + 1)
+            elif script[index] == RVN_Q and len(script) > 39:
+                return TX_NEW_ASSET, False, (index + 1)
+            elif script[index] == RVN_O:
+                return TX_NEW_ASSET, True, (index + 1)
+            elif script[index] == RVN_R:
+                return TX_REISSUE_ASSET, False, (index + 1)
+
+    return None
+
 class SerializationError(Exception):
     """ Thrown when there's a problem deserializing or serializing """
 
@@ -72,11 +135,14 @@ class TxOutput(NamedTuple):
     type: int
     address: str
     value: Union[int, str]  # str when the output is set to max: '!'
-
+    is_asset: bool
+    name: str
+    script: str  # We need to save the script for hash checking
 
 class TxOutputForUI(NamedTuple):
     address: str
     value: int
+    name: str
 
 
 class TxOutputHwInfo(NamedTuple):
@@ -253,9 +319,11 @@ OPPushDataPubkey = OPPushDataGeneric(lambda x: x in (33, 65))
 def match_decoded(decoded, to_match):
     if decoded is None:
         return False
-    if len(decoded) != len(to_match):
+    # Because our assets are just appended to normal txs,
+    # Just check up to what a normal script would be
+    if len(decoded) < len(to_match):
         return False
-    for i in range(len(decoded)):
+    for i in range(len(to_match)):
         to_match_item = to_match[i]
         decoded_item = decoded[i]
         if OPPushDataGeneric.is_instance(to_match_item) and to_match_item.check_data_len(decoded_item[0]):
@@ -404,7 +472,6 @@ def get_address_from_output_script(_bytes: bytes, *, net=None) -> Tuple[int, str
     match = [OPPushDataPubkey, opcodes.OP_CHECKSIG]
     if match_decoded(decoded, match) and ecc.ECPubkey.is_pubkey_bytes(decoded[0][1]):
         return TYPE_PUBKEY, bh2u(decoded[0][1])
-
     # p2pkh
     match = [opcodes.OP_DUP, opcodes.OP_HASH160, OPPushDataGeneric(lambda x: x == 20), opcodes.OP_EQUALVERIFY, opcodes.OP_CHECKSIG]
     if match_decoded(decoded, match):
@@ -524,14 +591,34 @@ def parse_witness(vds, txin, full_parse: bool):
 def parse_output(vds, i):
     d = {}
     d['value'] = vds.read_int64()
-    if d['value'] > TOTAL_COIN_SUPPLY_LIMIT_IN_BTC * COIN:
-        raise SerializationError('invalid output amount (too large)')
-    if d['value'] < 0:
-        raise SerializationError('invalid output amount (negative)')
     scriptPubKey = vds.read_bytes(vds.read_compact_size())
     d['type'], d['address'] = get_address_from_output_script(scriptPubKey)
     d['scriptPubKey'] = bh2u(scriptPubKey)
     d['prevout_n'] = i
+    d['is_asset'] = False
+    d['name'] = ''
+
+    asset_info = is_asset_script(scriptPubKey)
+
+    if asset_info is not None:
+        start = asset_info[2]
+        asset_name_len = scriptPubKey[start]
+        asset_name = scriptPubKey[start + 1:(start + 1 + asset_name_len)]
+        d['name'] = asset_name.decode('ascii')
+        d['is_asset'] = True
+        if asset_info[1]:
+            d['value'] = 100_000_000
+        else:  # Not an owner asset
+            sat_amt = int.from_bytes(scriptPubKey[(start + 1 + asset_name_len):
+                                                     (start + 9 + asset_name_len)],
+                                     byteorder='little')
+            d['value'] = sat_amt
+
+    if d['value'] > TOTAL_COIN_SUPPLY_LIMIT_IN_BTC * COIN:
+        raise SerializationError('invalid output amount (too large)')
+    if d['value'] < 0:
+        raise SerializationError('invalid output amount (negative)')
+
     return d
 
 
@@ -707,7 +794,7 @@ class Transaction:
             return
         d = deserialize(self.raw, force_full_parse)
         self._inputs = d['inputs']
-        self._outputs = [TxOutput(x['type'], x['address'], x['value']) for x in d['outputs']]
+        self._outputs = [TxOutput(x['type'], x['address'], x['value'], x['is_asset'], x['name'], x['scriptPubKey']) for x in d['outputs']]
         self.locktime = d['lockTime']
         self.version = d['version']
         self.is_partial_originally = d['partial']
@@ -958,8 +1045,8 @@ class Transaction:
 
     @classmethod
     def serialize_output(cls, output: TxOutput) -> str:
-        s = int_to_hex(output.value, 8)
-        script = cls.pay_script(output.type, output.address)
+        s = int_to_hex(output.value if not output.is_asset else 0, 8)
+        script = output.script
         s += var_int(len(script)//2)
         s += script
         return s
@@ -1179,13 +1266,16 @@ class Transaction:
     def get_outputs_for_UI(self) -> Sequence[TxOutputForUI]:
         outputs = []
         for o in self.outputs():
+            name = ''
             if o.type == TYPE_ADDRESS:
                 addr = o.address
             elif o.type == TYPE_PUBKEY:
                 addr = 'PUBKEY ' + o.address
             else:
                 addr = 'SCRIPT ' + o.address
-            outputs.append(TxOutputForUI(addr, o.value))      # consider using yield
+            if o.is_asset:
+                name = o.name
+            outputs.append(TxOutputForUI(addr, o.value, name))      # consider using yield
         return outputs
 
     def has_address(self, addr: str) -> bool:

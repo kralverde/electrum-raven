@@ -20,7 +20,7 @@
 # ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+import copy
 import threading
 import asyncio
 import itertools
@@ -122,7 +122,7 @@ class AddressSynchronizer(Logger):
         prevout_n = txi.get('prevout_n')
         for addr in self.db.get_txo(prevout_hash):
             l = self.db.get_txo_addr(prevout_hash, addr)
-            for n, v, is_cb in l:
+            for n, v, is_asset, name, is_cb in l:
                 if n == prevout_n:
                     return addr
         return None
@@ -255,10 +255,10 @@ class AddressSynchronizer(Logger):
                 for addr in self.db.get_txo(prevout_hash):
                     outputs = self.db.get_txo_addr(prevout_hash, addr)
                     # note: instead of [(n, v, is_cb), ...]; we could store: {n -> (v, is_cb)}
-                    for n, v, is_cb in outputs:
+                    for n, v, is_asset, name, is_cb in outputs:
                         if n == prevout_n:
                             if addr and self.is_mine(addr):
-                                self.db.add_txi_addr(tx_hash, addr, ser, v)
+                                self.db.add_txi_addr(tx_hash, addr, ser, v, is_asset, name)
                                 self._get_addr_balance_cache.pop(addr, None)  # invalidate cache
                             return
             for txi in tx.inputs():
@@ -272,15 +272,19 @@ class AddressSynchronizer(Logger):
             # add outputs
             for n, txo in enumerate(tx.outputs()):
                 v = txo.value
+                is_asset = txo.is_asset
+                name = txo.name
                 ser = tx_hash + ':%d'%n
+
                 addr = self.get_txout_address(txo)
+
                 if addr and self.is_mine(addr):
-                    self.db.add_txo_addr(tx_hash, addr, n, v, is_coinbase)
+                    self.db.add_txo_addr(tx_hash, addr, n, v, is_asset, name, is_coinbase)
                     self._get_addr_balance_cache.pop(addr, None)  # invalidate cache
                     # give v to txi that spends me
                     next_tx = self.db.get_spent_outpoint(tx_hash, n)
                     if next_tx is not None:
-                        self.db.add_txi_addr(next_tx, addr, ser, v)
+                        self.db.add_txi_addr(next_tx, addr, ser, v, is_asset, name)
                         self._add_tx_to_local_history(next_tx)
             # add to local history
             self._add_tx_to_local_history(tx_hash)
@@ -420,7 +424,12 @@ class AddressSynchronizer(Logger):
         domain = set(domain)
         # 1. Get the history of each address in the domain, maintain the
         #    delta of a tx as the sum of its deltas on domain addresses
-        tx_deltas = defaultdict(int)
+        def default_val():
+            return {
+                'RVN': 0,
+                'ASSETS': {},
+            }
+        tx_deltas = defaultdict(default_val)
         for addr in domain:
             h = self.get_address_history(addr)
             for tx_hash, height in h:
@@ -428,7 +437,12 @@ class AddressSynchronizer(Logger):
                 if delta is None or tx_deltas[tx_hash] is None:
                     tx_deltas[tx_hash] = None
                 else:
-                    tx_deltas[tx_hash] += delta
+                    tx_deltas[tx_hash]['RVN'] += delta['RVN'] # RVN is a guaranteed field
+                    for key in delta['ASSETS'].keys():
+                        if key in tx_deltas[tx_hash]:
+                            tx_deltas[tx_hash]['ASSETS'][key] += delta['ASSETS'][key]
+                        else:
+                            tx_deltas[tx_hash]['ASSETS'][key] = delta['ASSETS'][key]
         # 2. create sorted history
         history = []
         for tx_hash in tx_deltas:
@@ -437,18 +451,30 @@ class AddressSynchronizer(Logger):
             history.append((tx_hash, tx_mined_status, delta))
         history.sort(key = lambda x: self.get_txpos(x[0]), reverse=True)
         # 3. add balance
-        c, u, x = self.get_balance(domain)
-        balance = c + u + x
+        vals = self.get_balance(domain)
+        balance = {
+            'RVN': vals['RVN'][0]+vals['RVN'][1]+vals['RVN'][2],
+            'ASSETS': {},
+        }
+
+        for key in vals['ASSETS']:
+            balance['ASSETS'][key] = vals['ASSETS'][key][0]+vals['ASSETS'][key][1]+vals['ASSETS'][key][2]
+
         h2 = []
         for tx_hash, tx_mined_status, delta in history:
-            h2.append((tx_hash, tx_mined_status, delta, balance))
+            h2.append((tx_hash, tx_mined_status, delta, copy.deepcopy(balance)))
             if balance is None or delta is None:
                 balance = None
             else:
-                balance -= delta
+                balance['RVN'] -= delta['RVN']
+                for key in balance['ASSETS'].keys():
+                    if key in delta['ASSETS']:
+                        balance['ASSETS'][key] -= delta['ASSETS'][key]
+
         h2.reverse()
         # fixme: this may happen if history is incomplete
-        if balance not in [None, 0]:
+        # TODO: Make sure assets are all synced too
+        if balance is not None and balance['RVN'] != 0:
             self.logger.info("Error: history not synchronized")
             return []
 
@@ -581,16 +607,33 @@ class AddressSynchronizer(Logger):
     @with_transaction_lock
     def get_tx_delta(self, tx_hash, address):
         """effect of tx on address"""
-        delta = 0
+
+        ret = {
+            'RVN': 0,
+            'ASSETS': {},
+        }
+
         # substract the value of coins sent from address
         d = self.db.get_txi_addr(tx_hash, address)
-        for n, v in d:
-            delta -= v
+        for n, v, is_asset, name in d:
+            if not is_asset:
+                ret['RVN'] -= v
+            else:
+                if name in ret['ASSETS']:
+                    ret['ASSETS'][name] -= v
+                else:
+                    ret['ASSETS'][name] = -v
         # add the value of the coins received at address
         d = self.db.get_txo_addr(tx_hash, address)
-        for n, v, cb in d:
-            delta += v
-        return delta
+        for n, v, is_asset, name, cb in d:
+            if not is_asset:
+                ret['RVN'] += v
+            else:
+                if name in ret['ASSETS']:
+                    ret['ASSETS'][name] += v
+                else:
+                    ret['ASSETS'][name] = v
+        return ret
 
     @with_transaction_lock
     def get_tx_value(self, txid):
@@ -598,12 +641,14 @@ class AddressSynchronizer(Logger):
         delta = 0
         for addr in self.db.get_txi(txid):
             d = self.db.get_txi_addr(txid, addr)
-            for n, v in d:
-                delta -= v
+            for n, v, is_asset, name in d:
+                if not is_asset:
+                    delta -= v
         for addr in self.db.get_txo(txid):
             d = self.db.get_txo_addr(txid, addr)
-            for n, v, cb in d:
-                delta += v
+            for n, v, is_asset, name, cb in d:
+                if not is_asset:
+                    delta += v
         return delta
 
     def get_wallet_delta(self, tx: Transaction):
@@ -619,8 +664,8 @@ class AddressSynchronizer(Logger):
                 is_mine = True
                 is_relevant = True
                 d = self.db.get_txo_addr(txin['prevout_hash'], addr)
-                for n, v, cb in d:
-                    if n == txin['prevout_n']:
+                for n, v, is_asset, name, cb in d:
+                    if n == txin['prevout_n'] and not is_asset:
                         value = v
                         break
                 else:
@@ -634,10 +679,11 @@ class AddressSynchronizer(Logger):
         if not is_mine:
             is_partial = False
         for o in tx.outputs():
-            v_out += o.value
-            if self.is_mine(o.address):
-                v_out_mine += o.value
-                is_relevant = True
+            if not o.is_asset:
+                v_out += o.value
+                if self.is_mine(o.address):
+                    v_out_mine += o.value
+                    is_relevant = True
         if is_pruned:
             # some inputs are mine:
             fee = None
@@ -680,12 +726,14 @@ class AddressSynchronizer(Logger):
             sent = {}
             for tx_hash, height in h:
                 l = self.db.get_txo_addr(tx_hash, address)
-                for n, v, is_cb in l:
-                    received[tx_hash + ':%d'%n] = (height, v, is_cb)
+                for n, v, is_asset, name, is_cb in l:
+                    if not is_asset:
+                        received[tx_hash + ':%d'%n] = (height, v, is_asset, name, is_cb)
             for tx_hash, height in h:
                 l = self.db.get_txi_addr(tx_hash, address)
-                for txi, v in l:
-                    sent[txi] = height
+                for txi, v, is_asset, name in l:
+                    if not is_asset:
+                        sent[txi] = height
         return received, sent
 
     def get_addr_utxo(self, address):
@@ -694,11 +742,11 @@ class AddressSynchronizer(Logger):
             coins.pop(txi)
         out = {}
         for txo, v in coins.items():
-            tx_height, value, is_cb = v
+            tx_height, value, is_asset, name, is_cb = v
             prevout_hash, prevout_n = txo.split(':')
             x = {
                 'address':address,
-                'value':value,
+                'value':value if not is_asset else 0,
                 'prevout_n':int(prevout_n),
                 'prevout_hash':prevout_hash,
                 'height':tx_height,
@@ -710,7 +758,7 @@ class AddressSynchronizer(Logger):
     # return the total amount ever received by an address
     def get_addr_received(self, address):
         received, sent = self.get_addr_io(address)
-        return sum([v for height, v, is_cb in received.values()])
+        return sum([v for height, v, is_asset, name, is_cb in received.values() if not is_asset])
 
     @with_local_height_cached
     def get_addr_balance(self, address, *, excluded_coins: Set[str] = None):
@@ -725,29 +773,61 @@ class AddressSynchronizer(Logger):
             excluded_coins = set()
         assert isinstance(excluded_coins, set), f"excluded_coins should be set, not {type(excluded_coins)}"
         received, sent = self.get_addr_io(address)
-        c = u = x = 0
+        ret = {
+            'RVN': [0, 0, 0], #c, u, x
+            'ASSETS': {},
+        }
         local_height = self.get_local_height()
-        for txo, (tx_height, v, is_cb) in received.items():
+        for txo, (tx_height, v, is_asset, name, is_cb) in received.items():
             if txo in excluded_coins:
                 continue
             if is_cb and tx_height + COINBASE_MATURITY > local_height:
-                x += v
+                if not is_asset:
+                    ret['RVN'][2] += v
+                else:
+                    if name in ret['ASSETS']:
+                        ret['ASSETS'][name][2] += v
+                    else:
+                        ret['ASSETS'][name] = (0, 0, v)
             elif tx_height > 0:
-                c += v
+                if not is_asset:
+                    ret['RVN'][0] += v
+                else:
+                    if name in ret['ASSETS']:
+                        ret['ASSETS'][name][0] += v
+                    else:
+                        ret['ASSETS'][name] = (v, 0, 0)
             else:
-                u += v
+                if not is_asset:
+                    ret['RVN'][1] += v
+                else:
+                    if name in ret['ASSETS']:
+                        ret['ASSETS'][name][1] += v
+                    else:
+                        ret['ASSETS'][name] = (0, v, 0)
             if txo in sent:
                 if sent[txo] > 0:
-                    c -= v
+                    if not is_asset:
+                        ret['RVN'][0] -= v
+                    else:
+                        if name in ret['ASSETS']:
+                            ret['ASSETS'][name][0] -= v
+                        else:
+                            ret['ASSETS'][name] = (-v, 0, 0)
                 else:
-                    u -= v
-        result = c, u, x
+                    if not is_asset:
+                        ret['RVN'][1] -= v
+                    else:
+                        if name in ret['ASSETS']:
+                            ret['ASSETS'][name][1] -= v
+                        else:
+                            ret['ASSETS'][name] = (0, -v, 0)
         # cache result.
         if not excluded_coins:
             # Cache needs to be invalidated if a transaction is added to/
             # removed from history; or on new blocks (maturity...)
-            self._get_addr_balance_cache[address] = result
-        return result
+            self._get_addr_balance_cache[address] = ret
+        return ret
 
     @with_local_height_cached
     def get_utxos(self, domain=None, *, excluded_addresses=None,
@@ -779,13 +859,23 @@ class AddressSynchronizer(Logger):
             excluded_addresses = set()
         assert isinstance(excluded_addresses, set), f"excluded_addresses should be set, not {type(excluded_addresses)}"
         domain = set(domain) - excluded_addresses
-        cc = uu = xx = 0
+        ret = {
+            'RVN': [0, 0, 0],
+            'ASSETS': {}
+        }
         for addr in domain:
-            c, u, x = self.get_addr_balance(addr, excluded_coins=excluded_coins)
-            cc += c
-            uu += u
-            xx += x
-        return cc, uu, xx
+            v = self.get_addr_balance(addr, excluded_coins=excluded_coins)
+            for i in range(3):
+                ret['RVN'][i] += v['RVN'][i]
+
+            for key in v['ASSETS'].keys():
+                if key in ret['ASSETS']:
+                    for i in range(3):
+                        ret['ASSETS'][key][i] += v['ASSETS'][key][i]
+                else:
+                    ret['ASSETS'][key] = v['ASSETS'][key]
+
+        return ret
 
     def is_used(self, address):
         h = self.db.get_addr_history(address)

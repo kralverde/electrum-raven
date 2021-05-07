@@ -509,9 +509,10 @@ class Abstract_Wallet(AddressSynchronizer):
                 'height': height,
                 'confirmations': tx_mined_status.conf,
                 'timestamp': timestamp,
-                'incoming': True if value>0 else False,
-                'value': Satoshis(value),
-                'balance': Satoshis(balance),
+                'incoming': True if value['RVN']>0 else False,
+                'value': Satoshis(value['RVN']),
+                'balance': Satoshis(balance['RVN']),
+                'is_asset': len(value['ASSETS']) > 0,
                 'date': timestamp_to_datetime(timestamp),
                 'label': self.get_label(tx_hash),
                 'txpos_in_block': tx_mined_status.txpos,
@@ -525,6 +526,7 @@ class Abstract_Wallet(AddressSynchronizer):
                 item['outputs'] = list(map(lambda x:{'address':x.address, 'value':Satoshis(x.value)},
                                            tx.get_outputs_for_UI()))
             # value may be None if wallet is not fully synchronized
+            value = value['RVN']
             if value is None:
                 continue
             # fixme: use in and out values
@@ -1389,7 +1391,7 @@ class Abstract_Wallet(AddressSynchronizer):
         prev_n = txin['prevout_n']
         for addr in self.db.get_txo(txid):
             d = self.db.get_txo_addr(txid, addr)
-            for n, v, cb in d:
+            for n, v, is_asset, name, cb in d:
                 if n == prev_n:
                     return v
         # may occur if wallet is not synchronized
@@ -1414,7 +1416,7 @@ class Abstract_Wallet(AddressSynchronizer):
         total_price = 0
         for addr in self.db.get_txi(txid):
             d = self.db.get_txi_addr(txid, addr)
-            for ser, v in d:
+            for ser, v, is_asset, name in d:
                 input_value += v
                 total_price += self.coin_price(ser.split(':')[0], price_func, ccy, v)
         return total_price / (input_value/Decimal(COIN))

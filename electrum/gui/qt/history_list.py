@@ -240,15 +240,16 @@ class HistoryModel(QAbstractItemModel, Logger):
         if fx: fx.history_used_spot = False
         r = self.parent.wallet.get_full_history(domain=self.get_domain(), from_timestamp=None, to_timestamp=None, fx=fx)
         self.set_visibility_of_columns()
-        if r['transactions'] == list(self.transactions.values()):
+        transactions = [t for t in r['transactions'] if not t['is_asset']]
+        if transactions == list(self.transactions.values()):
             return
         old_length = len(self.transactions)
         if old_length != 0:
             self.beginRemoveRows(QModelIndex(), 0, old_length)
             self.transactions.clear()
             self.endRemoveRows()
-        self.beginInsertRows(QModelIndex(), 0, len(r['transactions'])-1)
-        for tx_item in r['transactions']:
+        self.beginInsertRows(QModelIndex(), 0, len(transactions)-1)
+        for tx_item in transactions:
             txid = tx_item['txid']
             self.transactions[txid] = tx_item
         self.endInsertRows()

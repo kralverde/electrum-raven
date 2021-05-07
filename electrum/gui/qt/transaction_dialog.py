@@ -334,9 +334,12 @@ class TxDialog(QDialog, MessageBoxMixin):
         o_text.setReadOnly(True)
         cursor = o_text.textCursor()
         for o in self.tx.get_outputs_for_UI():
-            addr, v = o.address, o.value
+            addr, name, v = o.address, o.name, o.value
             cursor.insertText(addr, text_format(addr))
             if v is not None:
+                if name:
+                    cursor.insertText('\t', ext)
+                    cursor.insertText(name, ext)
                 cursor.insertText('\t', ext)
                 cursor.insertText(format_amount(v), ext)
             cursor.insertBlock()

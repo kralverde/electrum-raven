@@ -534,24 +534,24 @@ class JsonDB(Logger):
         return self.txo.get(tx_hash, {}).get(address, [])
 
     @modifier
-    def add_txi_addr(self, tx_hash, addr, ser, v):
+    def add_txi_addr(self, tx_hash, addr, ser, v, is_asset, name):
         if tx_hash not in self.txi:
             self.txi[tx_hash] = {}
         d = self.txi[tx_hash]
         if addr not in d:
             # note that as this is a set, we can ignore "duplicates"
             d[addr] = set()
-        d[addr].add((ser, v))
+        d[addr].add((ser, v, is_asset, name))
 
     @modifier
-    def add_txo_addr(self, tx_hash, addr, n, v, is_coinbase):
+    def add_txo_addr(self, tx_hash, addr, n, v, is_asset, name, is_coinbase):
         if tx_hash not in self.txo:
             self.txo[tx_hash] = {}
         d = self.txo[tx_hash]
         if addr not in d:
             # note that as this is a set, we can ignore "duplicates"
             d[addr] = set()
-        d[addr].add((n, v, is_coinbase))
+        d[addr].add((n, v, is_asset, name, is_coinbase))
 
     @locked
     def list_txi(self):
@@ -754,8 +754,8 @@ class JsonDB(Logger):
     @profiler
     def _load_transactions(self):
         # references in self.data
-        self.txi = self.get_data_ref('txi')  # txid -> address -> list of (prev_outpoint, value)
-        self.txo = self.get_data_ref('txo')  # txid -> address -> list of (output_index, value, is_coinbase)
+        self.txi = self.get_data_ref('txi')  # txid -> address -> list of (prev_outpoint, value, is_asset, name)
+        self.txo = self.get_data_ref('txo')  # txid -> address -> list of (output_index, value, is_asset, name, is_coinbase)
         self.transactions = self.get_data_ref('transactions')   # type: Dict[str, Transaction]
         self.spent_outpoints = self.get_data_ref('spent_outpoints')
         self.history = self.get_data_ref('addr_history')  # address -> list of (txid, height)
