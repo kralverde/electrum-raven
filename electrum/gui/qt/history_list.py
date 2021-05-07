@@ -218,9 +218,10 @@ class HistoryModel(QAbstractItemModel, Logger):
                 b_str += self.parent.format_amount(balance, whitespaces=True)
                 b_str += '\n'
             for key in tx_item['balance']['ASSETS']:
-                b = tx_item['balance']['ASSETS'][key]
-                b_s = self.parent.format_amount(b, is_diff=True, whitespaces=True)
-                b_str += (b_s+'\n')
+                if key in tx_item['value']['ASSETS']:
+                    b = tx_item['balance']['ASSETS'][key]
+                    b_s = self.parent.format_amount(b, whitespaces=True)
+                    b_str += (b_s+'\n')
             return QVariant(b_str[:-1])
         elif col == HistoryColumns.FIAT_VALUE and 'fiat_value' in tx_item:
             value_str = self.parent.fx.format_fiat(tx_item['fiat_value'].value)

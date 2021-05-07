@@ -77,6 +77,8 @@ class AddressSynchronizer(Logger):
         # thread local storage for caching stuff
         self.threadlocal_cache = threading.local()
 
+        self.requested_assets = set()
+
         self._get_addr_balance_cache = {}
 
         self.load_and_cleanup()
@@ -113,6 +115,21 @@ class AddressSynchronizer(Logger):
     def get_address_history_len(self, addr: str) -> int:
         """Return number of transactions where address is involved."""
         return len(self._history_local.get(addr, ()))
+
+    def get_or_request_asset_meta(self, network, asset: str) -> dict:
+        with self.lock:
+            d = self.db.get_asset_meta(asset)
+            if not d and asset not in self.requested_assets:
+                self.requested_assets.update(asset)
+
+                async def get_asset_meta():
+                    data = await network.getmeta_for_asset(asset)
+                    self.db.add_asset_meta(asset, data)
+                    self.requested_assets.discard(asset)
+
+                asyncio.get_event_loop().create_task(get_asset_meta())
+            return d
+
 
     def get_txin_address(self, txi):
         addr = txi.get('address')
@@ -727,13 +744,11 @@ class AddressSynchronizer(Logger):
             for tx_hash, height in h:
                 l = self.db.get_txo_addr(tx_hash, address)
                 for n, v, is_asset, name, is_cb in l:
-                    if not is_asset:
-                        received[tx_hash + ':%d'%n] = (height, v, is_asset, name, is_cb)
+                    received[tx_hash + ':%d'%n] = (height, v, is_asset, name, is_cb)
             for tx_hash, height in h:
                 l = self.db.get_txi_addr(tx_hash, address)
                 for txi, v, is_asset, name in l:
-                    if not is_asset:
-                        sent[txi] = height
+                    sent[txi] = height
         return received, sent
 
     def get_addr_utxo(self, address):
@@ -788,7 +803,7 @@ class AddressSynchronizer(Logger):
                     if name in ret['ASSETS']:
                         ret['ASSETS'][name][2] += v
                     else:
-                        ret['ASSETS'][name] = (0, 0, v)
+                        ret['ASSETS'][name] = [0, 0, v]
             elif tx_height > 0:
                 if not is_asset:
                     ret['RVN'][0] += v
@@ -796,7 +811,7 @@ class AddressSynchronizer(Logger):
                     if name in ret['ASSETS']:
                         ret['ASSETS'][name][0] += v
                     else:
-                        ret['ASSETS'][name] = (v, 0, 0)
+                        ret['ASSETS'][name] = [v, 0, 0]
             else:
                 if not is_asset:
                     ret['RVN'][1] += v
@@ -804,7 +819,7 @@ class AddressSynchronizer(Logger):
                     if name in ret['ASSETS']:
                         ret['ASSETS'][name][1] += v
                     else:
-                        ret['ASSETS'][name] = (0, v, 0)
+                        ret['ASSETS'][name] = [0, v, 0]
             if txo in sent:
                 if sent[txo] > 0:
                     if not is_asset:
@@ -813,7 +828,7 @@ class AddressSynchronizer(Logger):
                         if name in ret['ASSETS']:
                             ret['ASSETS'][name][0] -= v
                         else:
-                            ret['ASSETS'][name] = (-v, 0, 0)
+                            ret['ASSETS'][name] = [-v, 0, 0]
                 else:
                     if not is_asset:
                         ret['RVN'][1] -= v
@@ -821,7 +836,7 @@ class AddressSynchronizer(Logger):
                         if name in ret['ASSETS']:
                             ret['ASSETS'][name][1] -= v
                         else:
-                            ret['ASSETS'][name] = (0, -v, 0)
+                            ret['ASSETS'][name] = [0, -v, 0]
         # cache result.
         if not excluded_coins:
             # Cache needs to be invalidated if a transaction is added to/
@@ -873,7 +888,7 @@ class AddressSynchronizer(Logger):
                     for i in range(3):
                         ret['ASSETS'][key][i] += v['ASSETS'][key][i]
                 else:
-                    ret['ASSETS'][key] = v['ASSETS'][key]
+                    ret['ASSETS'][key] = copy.deepcopy(v['ASSETS'][key])
 
         return ret
 
@@ -882,7 +897,7 @@ class AddressSynchronizer(Logger):
         return len(h) != 0
 
     def is_empty(self, address):
-        c, u, x = self.get_addr_balance(address)
+        c, u, x = self.get_addr_balance(address)['RVN']
         return c+u+x == 0
 
     def synchronize(self):

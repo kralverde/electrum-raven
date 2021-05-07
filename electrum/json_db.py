@@ -526,6 +526,14 @@ class JsonDB(Logger):
         raise WalletFileException(msg)
 
     @locked
+    def get_asset_meta(self, asset):
+        return copy.deepcopy(self.asset_meta.get(asset, {}))
+
+    @modifier
+    def add_asset_meta(self, asset, meta):
+        self.asset_meta[asset] = meta
+
+    @locked
     def get_txi(self, tx_hash):
         return list(self.txi.get(tx_hash, {}).keys())
 
@@ -765,6 +773,7 @@ class JsonDB(Logger):
         self.txi = self.get_data_ref('txi')  # txid -> address -> list of (prev_outpoint, value, is_asset, name)
         self.txo = self.get_data_ref('txo')  # txid -> address -> list of (output_index, value, is_asset, name, is_coinbase)
         self.transactions = self.get_data_ref('transactions')   # type: Dict[str, Transaction]
+        self.asset_meta = self.get_data_ref('asset_meta') # asset -> (reissuable, divisions, has_ipfs, ipfs)
         self.spent_outpoints = self.get_data_ref('spent_outpoints')
         self.history = self.get_data_ref('addr_history')  # address -> list of (txid, height)
         self.verified_tx = self.get_data_ref('verified_tx3')  # txid -> (height, timestamp, txpos, header_hash)

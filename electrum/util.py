@@ -558,7 +558,10 @@ def format_satoshis(x, num_zeros=0, decimal_point=8, precision=None, is_diff=Fal
     integer_part, fract_part = result.split(".")
     if len(fract_part) < num_zeros:
         fract_part += "0" * (num_zeros - len(fract_part))
-    result = integer_part + DECIMAL_POINT + fract_part
+    result = integer_part
+    if num_zeros > 0:
+        result += DECIMAL_POINT
+    result += fract_part
     # leading/trailing whitespaces
     if whitespaces:
         result += " " * (decimal_point - len(fract_part))

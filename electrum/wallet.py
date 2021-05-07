@@ -509,7 +509,7 @@ class Abstract_Wallet(AddressSynchronizer):
                 'height': height,
                 'confirmations': tx_mined_status.conf,
                 'timestamp': timestamp,
-                'incoming': True if value['RVN']>0 else False,
+                'incoming': True if value['RVN'] > 0 else False,
                 'value': value,
                 'balance': balance,
                 'date': timestamp_to_datetime(timestamp),

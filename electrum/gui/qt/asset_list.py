@@ -7,7 +7,7 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont
 from PyQt5.QtWidgets import QAbstractItemView, QComboBox, QLabel, QMenu
 
 from electrum.i18n import _
-from electrum.util import block_explorer_URL, profiler
+from electrum.util import block_explorer_URL, profiler, format_satoshis
 from electrum.plugin import run_hook
 from electrum.bitcoin import is_address
 from electrum.wallet import InternalAddressCorruption
@@ -18,138 +18,103 @@ from .util import MyTreeView, MONOSPACE_FONT, ColorScheme, webopen
 class AssetList(MyTreeView):
 
     class Columns(IntEnum):
-        TYPE = 0
-        ADDRESS = 1
-        LABEL = 2
-        COIN_BALANCE = 3
-        FIAT_BALANCE = 4
-        NUM_TXS = 5
+        NAME = 0
+        BALANCE = 1
+        IPFS = 2
+        REISSUABLE = 3
+        DIVISIONS = 4
 
-    filter_columns = [Columns.TYPE, Columns.ADDRESS, Columns.LABEL, Columns.COIN_BALANCE]
+    filter_columns = [Columns.NAME, Columns.BALANCE, Columns.IPFS, Columns.REISSUABLE, Columns.DIVISIONS]
 
     def __init__(self, parent=None):
-        super().__init__(parent, self.create_menu, stretch_column=self.Columns.LABEL)
+        super().__init__(parent, self.create_menu, stretch_column=None)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
-        self.show_change = 0
-        self.show_used = 0
-        self.change_button = QComboBox(self)
-        self.change_button.currentIndexChanged.connect(self.toggle_change)
-        for t in [_('All'), _('Receiving'), _('Change')]:
-            self.change_button.addItem(t)
-        self.used_button = QComboBox(self)
-        self.used_button.currentIndexChanged.connect(self.toggle_used)
-        for t in [_('All'), _('Unused'), _('Funded'), _('Used')]:
-            self.used_button.addItem(t)
         self.setModel(QStandardItemModel(self))
         self.update()
 
-    def get_toolbar_buttons(self):
-        return QLabel(_("Filter:")), self.change_button, self.used_button
-
     def on_hide_toolbar(self):
-        self.show_change = 0
-        self.show_used = 0
         self.update()
 
-    def save_toolbar_state(self, state, config):
-        config.set_key('show_toolbar_addresses', state)
-
-    def refresh_headers(self):
-        fx = self.parent.fx
-        if fx and fx.get_fiat_address_config():
-            ccy = fx.get_currency()
-        else:
-            ccy = _('Fiat')
-        headers = {
-            self.Columns.TYPE: _('Type'),
-            self.Columns.ADDRESS: _('Address'),
-            self.Columns.LABEL: _('Label'),
-            self.Columns.COIN_BALANCE: _('Balance'),
-            self.Columns.FIAT_BALANCE: ccy + ' ' + _('Balance'),
-            self.Columns.NUM_TXS: _('Tx'),
-        }
-        self.update_headers(headers)
+    def get_toolbar_buttons(self):
+        return QLabel(_("TEST")),
 
     def toggle_change(self, state):
-        if state == self.show_change:
-            return
-        self.show_change = state
         self.update()
 
     def toggle_used(self, state):
-        if state == self.show_used:
-            return
-        self.show_used = state
         self.update()
+
+    def refresh_headers(self):
+        headers = {
+            self.Columns.NAME: _('Name'),
+            self.Columns.BALANCE: _('Balance'),
+            self.Columns.IPFS: _('IPFS'),
+            self.Columns.REISSUABLE: _('Reissuable'),
+            self.Columns.DIVISIONS: _('Decimals'),
+        }
+        self.update_headers(headers)
 
     @profiler
     def update(self):
+
         self.wallet = self.parent.wallet
-        current_address = self.current_item_user_role(col=self.Columns.LABEL)
-        if self.show_change == 1:
-            addr_list = self.wallet.get_receiving_addresses()
-        elif self.show_change == 2:
-            addr_list = self.wallet.get_change_addresses()
-        else:
-            addr_list = self.wallet.get_addresses()
+        addr_list = self.wallet.get_addresses()
         self.model().clear()
+
+        current_asset = self.current_item_user_role(col=self.Columns.IPFS)
+        set_asset = None
         self.refresh_headers()
-        fx = self.parent.fx
-        set_address = None
+
+        assets = {}
+
         for address in addr_list:
-            num = self.wallet.get_address_history_len(address)
-            label = self.wallet.labels.get(address, '')
-            bal = self.wallet.get_addr_balance(address)
-            balance = bal['RVN'][0] + bal['RVN'][1] + bal['RVN'][2]
-            is_used_and_empty = self.wallet.is_used(address) and balance == 0
-            if self.show_used == 1 and (balance or is_used_and_empty):
-                continue
-            if self.show_used == 2 and balance == 0:
-                continue
-            if self.show_used == 3 and not is_used_and_empty:
-                continue
-            balance_text = self.parent.format_amount(balance, whitespaces=True)
-            # create item
-            if fx and fx.get_fiat_address_config():
-                rate = fx.exchange_rate()
-                fiat_balance = fx.value_str(balance, rate)
-            else:
-                fiat_balance = ''
-            labels = ['', address, label, balance_text, fiat_balance, "%d"%num]
+            for asset, (c, u, x) in self.wallet.get_addr_balance(address)['ASSETS'].items():
+                if asset in assets:
+                    assets[asset]['balance'] += (c+u+x)
+                else:
+                    meta = self.wallet.get_or_request_asset_meta(self.parent.network, asset)
+                    meta['balance'] = (c+u+x)
+                    assets[asset] = meta
+
+        for asset, meta in assets.items():
+
+            balance = meta['balance']
+            reissuable = ''
+            if 'reissuable' in meta:
+                reissuable = str('No' if meta['reissuable'] == 0 else 'Yes')
+            divisions = ''
+            div_amt = 0
+            if 'divisions' in meta:
+                div_amt = meta['divisions']
+                divisions = str(div_amt)
+            ipfs = ''
+            if 'ipfs' in meta:
+                ipfs = meta['ipfs']
+
+            balance_text = format_satoshis(
+                balance, div_amt, self.parent.decimal_point, is_diff=False, whitespaces=False)
+
+            labels = [asset, balance_text, ipfs, reissuable, divisions]
             address_item = [QStandardItem(e) for e in labels]
             # align text and set fonts
             for i, item in enumerate(address_item):
                 item.setTextAlignment(Qt.AlignVCenter)
-                if i not in (self.Columns.TYPE, self.Columns.LABEL):
+                if i not in (self.Columns.NAME, self.Columns.IPFS):
                     item.setFont(QFont(MONOSPACE_FONT))
                 item.setEditable(i in self.editable_columns)
-            address_item[self.Columns.FIAT_BALANCE].setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            # setup column 0
-            if self.wallet.is_change(address):
-                address_item[self.Columns.TYPE].setText(_('change'))
-                address_item[self.Columns.TYPE].setBackground(ColorScheme.YELLOW.as_color(True))
-            else:
-                address_item[self.Columns.TYPE].setText(_('receiving'))
-                address_item[self.Columns.TYPE].setBackground(ColorScheme.GREEN.as_color(True))
-            address_item[self.Columns.LABEL].setData(address, Qt.UserRole)
-            # setup column 1
-            if self.wallet.is_frozen_address(address):
-                address_item[self.Columns.ADDRESS].setBackground(ColorScheme.BLUE.as_color(True))
-            if self.wallet.is_beyond_limit(address):
-                address_item[self.Columns.ADDRESS].setBackground(ColorScheme.RED.as_color(True))
-            # add item
+
+            #address_item[self.Columns.BALANCE].setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
             count = self.model().rowCount()
             self.model().insertRow(count, address_item)
-            address_idx = self.model().index(count, self.Columns.LABEL)
-            if address == current_address:
+            address_idx = self.model().index(count, self.Columns.IPFS)
+
+            if asset == current_asset:
                 set_address = QPersistentModelIndex(address_idx)
-        self.set_current_idx(set_address)
-        # show/hide columns
-        if fx and fx.get_fiat_address_config():
-            self.showColumn(self.Columns.FIAT_BALANCE)
-        else:
-            self.hideColumn(self.Columns.FIAT_BALANCE)
+
+        self.set_current_idx(set_asset)
+
         self.filter()
 
     def create_menu(self, position):
@@ -172,7 +137,7 @@ class AssetList(MyTreeView):
                 return
             addr = addrs[0]
 
-            addr_column_title = self.model().horizontalHeaderItem(self.Columns.LABEL).text()
+            addr_column_title = self.model().horizontalHeaderItem(self.Columns.IPFS).text()
             addr_idx = idx.sibling(idx.row(), self.Columns.LABEL)
 
             column_title = self.model().horizontalHeaderItem(col).text()
