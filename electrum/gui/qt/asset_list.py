@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from enum import IntEnum
 
 from PyQt5.QtCore import Qt, QPersistentModelIndex, QModelIndex
@@ -16,13 +18,14 @@ from .util import MyTreeView, MONOSPACE_FONT, ColorScheme, webopen
 class AssetList(MyTreeView):
 
     class Columns(IntEnum):
-        NAME = 0
-        AMOUNT = 1
-        IPFS_HASH = 2
-        REISSUABLE = 3
-        DIVISIONS = 4
+        TYPE = 0
+        ADDRESS = 1
+        LABEL = 2
+        COIN_BALANCE = 3
+        FIAT_BALANCE = 4
+        NUM_TXS = 5
 
-    filter_columns = [Columns.NAME, Columns.AMOUNT, Columns.IPFS_HASH, Columns.REISSUABLE, Columns.DIVISIONS]
+    filter_columns = [Columns.TYPE, Columns.ADDRESS, Columns.LABEL, Columns.COIN_BALANCE]
 
     def __init__(self, parent=None):
         super().__init__(parent, self.create_menu, stretch_column=self.Columns.LABEL)
