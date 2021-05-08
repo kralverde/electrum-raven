@@ -39,7 +39,7 @@ class AssetList(MyTreeView):
     def webopen_safe(self, url):
         show_warn = self.parent.config.get('show_ipfs_warning', True)
         if show_warn:
-            cb = QCheckBox(_("Don't show this again."))
+            cb = QCheckBox(_("Don't show this message again."))
             cb_checked = False
             def on_cb(x):
                 nonlocal cb_checked
@@ -178,6 +178,7 @@ class AssetList(MyTreeView):
                     'ipfs' in self.asset_meta[asset]:
                 url = ipfs_explorer_URL(self.parent.config, 'ipfs', self.asset_meta[asset]['ipfs'])
                 menu.addAction(_('View IPFS'), lambda: self.webopen_safe(url))
+            menu.addAction(_('View History'), lambda: self.parent.show_asset(asset))
             menu.addAction(_('Mark as spam'), lambda: ())
 
         menu.exec_(self.viewport().mapToGlobal(position))

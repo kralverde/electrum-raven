@@ -172,7 +172,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.console_tab = self.create_console_tab()
         self.contacts_tab = self.create_contacts_tab()
         tabs.addTab(self.create_history_tab(), read_QIcon("tab_history.png"), _('History'))
-        tabs.addTab(self.assets_tab, read_QIcon("tab_history.png"), _('Assets'))
+        tabs.addTab(self.assets_tab, read_QIcon("tab_assets.png"), _('Assets'))
         tabs.addTab(self.send_tab, read_QIcon("tab_send.png"), _('Send'))
         tabs.addTab(self.receive_tab, read_QIcon("tab_receive.png"), _('Receive'))
 
@@ -882,6 +882,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.history_model.refresh('update_tabs')
         self.request_list.update()
         self.address_list.update()
+        self.asset_list.update()
         self.utxo_list.update()
         self.contact_list.update()
         self.invoice_list.update()
@@ -900,6 +901,11 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def show_address(self, addr):
         from . import address_dialog
         d = address_dialog.AddressDialog(self, addr)
+        d.exec_()
+
+    def show_asset(self, asset):
+        from . import asset_dialog
+        d = asset_dialog.AssetDialog(self, asset)
         d.exec_()
 
     def show_transaction(self, tx, tx_desc = None):
@@ -1066,6 +1072,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         finally:
             self.request_list.update()
             self.address_list.update()
+            self.asset_list.update()
 
     def view_and_paste(self, title, msg, data):
         dialog = WindowModalDialog(self, title)
@@ -2807,6 +2814,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.show_error(_("The following inputs could not be imported")
                             + f' ({len(bad_inputs)}):\n' + msg)
         self.address_list.update()
+        self.asset_list.update()
         self.history_list.update()
 
     def import_addresses(self):
@@ -3053,7 +3061,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         colortheme_combo = QComboBox()
         colortheme_combo.addItem(_('Light'), 'default')
         colortheme_combo.addItem(_('Dark'), 'dark')
-        index = colortheme_combo.findData(self.config.get('qt_gui_color_theme', 'default'))
+        index = colortheme_combo.findData(self.config.get('qt_gui_color_theme', 'dark'))
         colortheme_combo.setCurrentIndex(index)
         colortheme_label = QLabel(_('Color theme') + ':')
         def on_colortheme(x):
@@ -3305,6 +3313,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             g = self.geometry()
             self.wallet.storage.put("winpos-qt", [g.left(),g.top(),
                                                   g.width(),g.height()])
+        else:
+            self.wallet.storage.put("winpos-qt", None)
         self.config.set_key("console-history", self.console.history[-50:],
                             True)
         if self.qr_window:

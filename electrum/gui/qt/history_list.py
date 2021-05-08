@@ -383,6 +383,57 @@ class HistoryModel(QAbstractItemModel, Logger):
                                     timestamp=tx_item['timestamp'])
         return tx_mined_info
 
+class AssetHistoryModel(HistoryModel):
+    def __init__(self, parent, asset):
+        HistoryModel.__init__(self, parent)
+        self.asset = asset
+
+    @profiler
+    def refresh(self, reason: str):
+        self.logger.info(f"refreshing... reason: {reason}")
+        assert self.parent.gui_thread == threading.current_thread(), 'must be called from GUI thread'
+        assert self.view, 'view not set'
+        selected = self.view.selectionModel().currentIndex()
+        selected_row = None
+        if selected:
+            selected_row = selected.row()
+        fx = self.parent.fx
+        if fx: fx.history_used_spot = False
+        r = self.parent.wallet.get_full_history(domain=self.get_domain(), from_timestamp=None, to_timestamp=None, fx=fx)
+        self.set_visibility_of_columns()
+        transactions = [t for t in r['transactions'] if self.asset in t['value']['ASSETS']]
+        if transactions == list(self.transactions.values()):
+            return
+        old_length = len(self.transactions)
+        if old_length != 0:
+            self.beginRemoveRows(QModelIndex(), 0, old_length)
+            self.transactions.clear()
+            self.endRemoveRows()
+        self.beginInsertRows(QModelIndex(), 0, len(transactions) - 1)
+        for tx_item in transactions:
+            txid = tx_item['txid']
+            self.transactions[txid] = tx_item
+        self.endInsertRows()
+        if selected_row:
+            self.view.selectionModel().select(self.createIndex(selected_row, 0),
+                                              QItemSelectionModel.Rows | QItemSelectionModel.SelectCurrent)
+        self.view.filter()
+        # update summary
+        self.summary = r['summary']
+        if not self.view.years and self.transactions:
+            start_date = date.today()
+            end_date = date.today()
+            if len(self.transactions) > 0:
+                start_date = self.transactions.value_from_pos(0).get('date') or start_date
+                end_date = self.transactions.value_from_pos(len(self.transactions) - 1).get('date') or end_date
+            self.view.years = [str(i) for i in range(start_date.year, end_date.year + 1)]
+            self.view.period_combo.insertItems(1, self.view.years)
+        # update tx_status_cache
+        self.tx_status_cache.clear()
+        for txid, tx_item in self.transactions.items():
+            tx_mined_info = self.tx_mined_info_from_tx_item(tx_item)
+            self.tx_status_cache[txid] = self.parent.wallet.get_tx_status(txid, tx_mined_info)
+
 class HistoryList(MyTreeView, AcceptFileDragDrop):
     filter_columns = [HistoryColumns.STATUS_TEXT,
                       HistoryColumns.DESCRIPTION,
@@ -404,7 +455,7 @@ class HistoryList(MyTreeView, AcceptFileDragDrop):
             return False
 
     def __init__(self, parent, model: HistoryModel):
-        super().__init__(parent, self.create_menu, stretch_column=HistoryColumns.DESCRIPTION)
+        super().__init__(parent, self.create_menu, stretch_column=None)#HistoryColumns.DESCRIPTION)
         self.hm = model
         self.proxy = HistorySortModel(self)
         self.proxy.setSourceModel(model)
