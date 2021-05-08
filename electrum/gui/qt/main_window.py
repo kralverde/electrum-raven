@@ -159,7 +159,10 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             decimal_point_to_base_unit_name(self.decimal_point)
         except UnknownBaseUnit:
             self.decimal_point = DECIMAL_POINT_DEFAULT
-        self.num_zeros = int(config.get('num_zeros', 0))
+        self.num_zeros = int(config.get('num_zeros', 1))
+
+        self.asset_blacklist = config.get('asset_blacklist', [])
+        self.asset_whitelist = config.get('asset_whitelist', [])
 
         self.completions = QStringListModel()
 
@@ -192,7 +195,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setCentralWidget(tabs)
 
-        if self.config.get("is_maximized"):
+        if self.config.get("is_maximized", False):
             self.showMaximized()
 
         self.setWindowIcon(read_QIcon("electrum.png"))
@@ -348,6 +351,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
                 pass  # see #4418
             self.show_error(str(e))
 
+    # TODO: asset reissues
     def on_network(self, event, *args):
         if event == 'wallet_updated':
             wallet = args[0]
@@ -441,10 +445,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         try:
             screen = self.app.desktop().screenGeometry()
             assert screen.contains(QRect(*winpos))
-            self.setGeometry(*winpos)
+            if not self.isMaximized():
+                self.setGeometry(*winpos)
         except:
             self.logger.info("using default geometry")
-            self.setGeometry(100, 100, 840, 400)
+            if not self.isMaximized():
+                self.setGeometry(100, 100, 840, 400)
 
     def watching_only_changed(self):
         name = "Electrum-raven Testnet" if constants.net.TESTNET else "Electrum-raven"
@@ -907,6 +913,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         from . import asset_dialog
         d = asset_dialog.AssetDialog(self, asset)
         d.exec_()
+
+    def mark_asset_as_spam(self, asset):
+        self.asset_blacklist.append('^'+asset+'$')
+        self.config.set_key('asset_blacklist', self.asset_blacklist, True)
+        self.asset_list.update()
+        self.history_model.refresh('Marked asset as spam')
 
     def show_transaction(self, tx, tx_desc = None):
         '''tx_desc is set only for txs created in the Send tab'''
@@ -2851,6 +2863,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         fee_widgets = []
         tx_widgets = []
         id_widgets = []
+        asset_widgets = []
 
         # language
         lang_help = _('Select which language is used in the GUI (after restart).')
@@ -3256,10 +3269,61 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         fiat_widgets.append((QLabel(_('Show Fiat balance for addresses')), fiat_address_checkbox))
         fiat_widgets.append((QLabel(_('Source')), ex_combo))
 
+        # Asset black list
+        self.need_write_blacklist = False
+        msg = 'A list of regular expressions separated by new lines. ' \
+              'If an asset\'s name matches any regular expression in this list, ' \
+              'it is marked as spam.'
+        regex_b = '\n'.join(self.asset_blacklist)
+        blacklist_info = HelpLabel(_('Asset Blacklist') + ':', msg)
+        regex_e_b = QTextEdit()
+        regex_e_b.setPlainText(regex_b)
+
+        def update_blacklist():
+            self.asset_blacklist = regex_e_b.toPlainText().split('\n')
+            if not self.asset_blacklist[0]: # We don't want an empty string, we want an empty regex
+                self.asset_blacklist = []
+            self.need_write_blacklist = True
+
+        regex_e_b.textChanged.connect(update_blacklist)
+        asset_widgets.append((blacklist_info, regex_e_b))
+
+        # Asset white list
+        self.need_write_whitelist = False
+        msg = 'A list of regular expressions seperated by new lines. ' \
+              'If this list is non-empty, only assets that match any regular ' \
+              'expression in this list will be marked as NOT spam. All others ' \
+              'will be marked as spam by default.'
+        regex_w = '\n'.join(self.asset_whitelist)
+        whitelist_info = HelpLabel(_('Asset Whitelist') + ':', msg)
+        regex_e_w = QTextEdit()
+        regex_e_w.setPlainText(regex_w)
+
+        def update_whitelist():
+            self.asset_whitelist = regex_e_w.toPlainText().split('\n')
+            if not self.asset_whitelist[0]:
+                self.asset_whitelist = []
+            self.need_write_whitelist = True
+
+        regex_e_w.textChanged.connect(update_whitelist)
+        asset_widgets.append((whitelist_info, regex_e_w))
+
+        show_spam_cb = QCheckBox(_("Show assets marked as spam"))
+        show_spam_cb.setChecked(self.config.get('show_spam_assets', False))
+
+        def on_set_show_spam(v):
+            self.config.set_key('show_spam_assets', v == Qt.Checked, save=True)
+            self.asset_list.update()
+            self.history_model.refresh('Toggled show spam assets')
+
+        show_spam_cb.stateChanged.connect(on_set_show_spam)
+        asset_widgets.append((show_spam_cb, None))
+
         tabs_info = [
             (fee_widgets, _('Fees')),
             (tx_widgets, _('Transactions')),
             (gui_widgets, _('General')),
+            (asset_widgets, _('Assets')),
             (fiat_widgets, _('Fiat')),
             (id_widgets, _('Identity')),
         ]
@@ -3290,6 +3354,16 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         self.alias_received_signal.disconnect(set_alias_color)
 
+        if self.need_write_blacklist:
+            self.config.set_key('asset_blacklist', self.asset_blacklist, True)
+
+        if self.need_write_whitelist:
+            self.config.set_key('asset_whitelist', self.asset_whitelist, True)
+
+        if self.need_write_blacklist or self.need_write_whitelist:
+            self.asset_list.update()
+            self.history_model.refresh('Changed asset white or black list')
+
         run_hook('close_settings_dialog')
         if self.need_restart:
             self.show_warning(_('Please restart Electrum to activate the new GUI settings'), title=_('Success'))
@@ -3313,8 +3387,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             g = self.geometry()
             self.wallet.storage.put("winpos-qt", [g.left(),g.top(),
                                                   g.width(),g.height()])
-        else:
-            self.wallet.storage.put("winpos-qt", None)
+
         self.config.set_key("console-history", self.console.history[-50:],
                             True)
         if self.qr_window:

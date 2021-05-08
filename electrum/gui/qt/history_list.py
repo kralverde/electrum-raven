@@ -23,6 +23,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import re
 import os
 import datetime
 from datetime import date
@@ -267,7 +268,33 @@ class HistoryModel(QAbstractItemModel, Logger):
         if fx: fx.history_used_spot = False
         r = self.parent.wallet.get_full_history(domain=self.get_domain(), from_timestamp=None, to_timestamp=None, fx=fx)
         self.set_visibility_of_columns()
-        transactions = [t for t in r['transactions'] if t]#['value']['RVN'] != 0]
+        transactions = []
+        for t in r['transactions']:
+
+            asset = ''
+
+            if t['value']['ASSETS']:
+                asset = list(t['value']['ASSETS'].keys())[0]
+
+            if asset and not self.parent.config.get('show_spam_assets', False):
+                if self.parent.asset_whitelist:  # Whitelist overrides blacklist
+                    should_continue = True
+                    for regex in self.parent.asset_whitelist:
+                        if re.search(regex, asset):
+                            should_continue = False
+                            break
+                else:
+                    should_continue = False
+                    for regex in self.parent.asset_blacklist:
+                        if re.search(regex, asset):
+                            should_continue = True
+                            break
+
+                if should_continue:
+                    continue
+
+            transactions.append(t)
+
         if transactions == list(self.transactions.values()):
             return
         old_length = len(self.transactions)
@@ -688,6 +715,12 @@ class HistoryList(MyTreeView, AcceptFileDragDrop):
             menu.addAction(read_QIcon("seal"), _("View invoice"), lambda: self.parent.show_invoice(pr_key))
         if tx_URL:
             menu.addAction(_("View on block explorer"), lambda: webopen(tx_URL))
+
+        asset_s = tx_item['value']['ASSETS']
+        if asset_s: # Non empty
+            asset = list(tx_item['value']['ASSETS'].keys())[0]
+            menu.addAction(_("Mark asset as spam"), lambda: self.parent.mark_asset_as_spam(asset))
+
         menu.exec_(self.viewport().mapToGlobal(position))
 
     def remove_local_tx(self, delete_tx):

@@ -670,7 +670,9 @@ ipfs_explorers = {
     'ipfs.io': ('https://ipfs.io/',
                 {'ipfs': 'ipfs/'}),
     'infura.io': ('https://ipfs.infura.io/',
-                  {'ipfs': 'ipfs/'})
+                  {'ipfs': 'ipfs/'}),
+    'ravencoinipfs-gateway.com': ('https://ravencoinipfs-gateway.com/',
+                                  {'ipfs': 'ipfs/'}),
 }
 
 def ipfs_explorer_info():

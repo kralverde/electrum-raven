@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from enum import IntEnum
+import re
 
 from PyQt5.QtCore import Qt, QPersistentModelIndex, QModelIndex
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QMouseEvent
@@ -111,6 +112,23 @@ class AssetList(MyTreeView):
 
         for asset, meta in assets.items():
 
+            if not self.parent.config.get('show_spam_assets', False):
+                if self.parent.asset_whitelist:  # Whitelist overrides blacklist
+                    should_continue = True
+                    for regex in self.parent.asset_whitelist:
+                        if re.search(regex, asset):
+                            should_continue = False
+                            break
+                else:
+                    should_continue = False
+                    for regex in self.parent.asset_blacklist:
+                        if re.search(regex, asset):
+                            should_continue = True
+                            break
+
+                if should_continue:
+                    continue
+
             self.asset_meta[asset] = meta  # 'Deep' copy
 
             balance = meta['balance']
@@ -179,7 +197,7 @@ class AssetList(MyTreeView):
                 url = ipfs_explorer_URL(self.parent.config, 'ipfs', self.asset_meta[asset]['ipfs'])
                 menu.addAction(_('View IPFS'), lambda: self.webopen_safe(url))
             menu.addAction(_('View History'), lambda: self.parent.show_asset(asset))
-            menu.addAction(_('Mark as spam'), lambda: ())
+            menu.addAction(_('Mark as spam'), lambda: self.parent.mark_asset_as_spam(asset))
 
         menu.exec_(self.viewport().mapToGlobal(position))
 
