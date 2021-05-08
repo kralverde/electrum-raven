@@ -455,7 +455,7 @@ class HistoryList(MyTreeView, AcceptFileDragDrop):
             return False
 
     def __init__(self, parent, model: HistoryModel):
-        super().__init__(parent, self.create_menu, stretch_column=None)#HistoryColumns.DESCRIPTION)
+        super().__init__(parent, self.create_menu, stretch_column=HistoryColumns.DESCRIPTION)
         self.hm = model
         self.proxy = HistorySortModel(self)
         self.proxy.setSourceModel(model)

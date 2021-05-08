@@ -669,6 +669,8 @@ testnet_block_explorers = {
 ipfs_explorers = {
     'ipfs.io': ('https://ipfs.io/',
                 {'ipfs': 'ipfs/'}),
+    'infura.io': ('https://ipfs.infura.io/',
+                  {'ipfs': 'ipfs/'})
 }
 
 def ipfs_explorer_info():
@@ -676,7 +678,7 @@ def ipfs_explorer_info():
 
 def ipfs_explorer(config: 'SimpleConfig') -> str:
     default_ = 'ipfs.io'
-    ie_key = config.get('ipfs', default_)
+    ie_key = config.get('ipfs_explorer', default_)
     ie = ipfs_explorer_info().get(ie_key)
     return ie_key if ie is not None else default_
 
