@@ -24,6 +24,7 @@
 # SOFTWARE.
 import asyncio
 import hashlib
+import json
 from typing import Dict, List, TYPE_CHECKING, Tuple
 from collections import defaultdict
 import logging
@@ -53,6 +54,23 @@ def history_status(h):
         status += tx_hash + ':%d:' % height
     return bh2u(hashlib.sha256(status.encode('ascii')).digest())
 
+def asset_status(asset_data):
+    if asset_data:
+        div_amt = asset_data['divisions']
+        reissuable = ['reissuable']
+        has_ipfs = ['has_ipfs']
+
+        h = ''.join([str(div_amt), str(reissuable), str(has_ipfs)])
+        if 'ipfs' in asset_data:
+            h += asset_data['ipfs']
+
+        status = bh2u(hashlib.sha256(h.encode('ascii')).digest())
+    else:
+        status = None
+
+    return status
+
+
 
 class SynchronizerBase(NetworkJobOnDefaultServer):
     """Subscribe over the network to a set of addresses, and monitor their statuses.
@@ -66,29 +84,44 @@ class SynchronizerBase(NetworkJobOnDefaultServer):
     def _reset(self):
         super()._reset()
         self.requested_addrs = set()
+        self.requested_assets = set()
         self.scripthash_to_address = {}
         self._processed_some_notifications = False  # so that we don't miss them
+        self._processed_some_asset_notifications = False
         self._reset_request_counters()
         # Queues
         self.add_queue = asyncio.Queue()
+        self.asset_add_queue = asyncio.Queue()
         self.status_queue = asyncio.Queue()
+        self.asset_status_queue = asyncio.Queue()
 
     async def _start_tasks(self):
         try:
             async with self.group as group:
                 await group.spawn(self.send_subscriptions())
+                await group.spawn(self.send_asset_subscriptions())
                 await group.spawn(self.handle_status())
+                await group.spawn(self.handle_asset_status())
                 await group.spawn(self.main())
         finally:
             # we are being cancelled now
             self.session.unsubscribe(self.status_queue)
+            self.session.unsubscribe(self.asset_status_queue)
 
     def _reset_request_counters(self):
         self._requests_sent = 0
         self._requests_answered = 0
 
+    def add_asset(self, asset):
+        asyncio.run_coroutine_threadsafe(self._add_asset(asset), self.asyncio_loop)
+
     def add(self, addr):
         asyncio.run_coroutine_threadsafe(self._add_address(addr), self.asyncio_loop)
+
+    async def _add_asset(self, asset: str):
+        if asset in self.requested_assets: return
+        self.requested_assets.add(asset)
+        await self.asset_add_queue.put(asset)
 
     async def _add_address(self, addr: str):
         if not is_address(addr): raise ValueError(f"invalid ravencoin address {addr}")
@@ -96,9 +129,26 @@ class SynchronizerBase(NetworkJobOnDefaultServer):
         self.requested_addrs.add(addr)
         await self.add_queue.put(addr)
 
+    async def _on_asset_status(self, asset, status):
+        raise NotImplementedError()
+
     async def _on_address_status(self, addr, status):
         """Handle the change of the status of an address."""
         raise NotImplementedError()  # implemented by subclasses
+
+    async def send_asset_subscriptions(self):
+        async def subscribe_to_asset(asset):
+            self._requests_sent += 1
+            try:
+                await self.session.subscribe('blockchain.asset.subscribe', [asset], self.asset_status_queue)
+            except RPCError as e:
+                raise
+            self._requests_answered += 1
+            self.requested_assets.remove(asset)
+
+        while True:
+            asset = await self.asset_add_queue.get()
+            await self.group.spawn(subscribe_to_asset, asset)
 
     async def send_subscriptions(self):
         async def subscribe_to_address(addr):
@@ -117,6 +167,12 @@ class SynchronizerBase(NetworkJobOnDefaultServer):
         while True:
             addr = await self.add_queue.get()
             await self.group.spawn(subscribe_to_address, addr)
+
+    async def handle_asset_status(self):
+        while True:
+            asset, status = await self.asset_status_queue.get()
+            await self.group.spawn(self._on_asset_status, asset, status)
+            self._processed_some_asset_notifications = True
 
     async def handle_status(self):
         while True:
@@ -148,6 +204,7 @@ class Synchronizer(SynchronizerBase):
         super()._reset()
         self.requested_tx = {}
         self.requested_histories = set()
+        self.requested_assets = set()
 
     def diagnostic_name(self):
         return self.wallet.diagnostic_name()
@@ -155,7 +212,26 @@ class Synchronizer(SynchronizerBase):
     def is_up_to_date(self):
         return (not self.requested_addrs
                 and not self.requested_histories
-                and not self.requested_tx)
+                and not self.requested_tx
+                and not self.requested_assets)
+
+    async def _on_asset_status(self, asset, status):
+        data = self.wallet.db.get_asset_meta(asset)
+        if asset_status(data) == status:
+            return
+        if (asset, status) in self.requested_assets:
+            return
+        self.requested_assets.add((asset, status))
+        self._requests_sent += 1
+        result = await self.network.getmeta_for_asset(asset)
+        self._requests_answered += 1
+        self.logger.info(f"receiving asset {asset}")
+        if asset_status(result) != status:
+            self.logger.info(f"error: status mismatch: {asset}")
+        else:
+            self.wallet.receive_asset_callback(asset, result)
+        self.requested_assets.discard((asset, status))
+
 
     async def _on_address_status(self, addr, status):
         history = self.wallet.db.get_addr_history(addr)
@@ -255,8 +331,10 @@ class Synchronizer(SynchronizerBase):
             await run_in_thread(self.wallet.synchronize)
             up_to_date = self.is_up_to_date()
             if (up_to_date != self.wallet.is_up_to_date()
-                    or up_to_date and self._processed_some_notifications):
+                    or up_to_date and self._processed_some_notifications
+                    and self._processed_some_asset_notifications):
                 self._processed_some_notifications = False
+                self._processed_some_asset_notifications = False
                 if up_to_date:
                     self._reset_request_counters()
                 self.wallet.set_up_to_date(up_to_date)

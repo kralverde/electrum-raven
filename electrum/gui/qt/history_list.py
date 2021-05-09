@@ -277,18 +277,16 @@ class HistoryModel(QAbstractItemModel, Logger):
                 asset = list(t['value']['ASSETS'].keys())[0]
 
             if asset and not self.parent.config.get('show_spam_assets', False):
-                if self.parent.asset_whitelist:  # Whitelist overrides blacklist
-                    should_continue = True
-                    for regex in self.parent.asset_whitelist:
-                        if re.search(regex, asset):
-                            should_continue = False
-                            break
-                else:
-                    should_continue = False
-                    for regex in self.parent.asset_blacklist:
-                        if re.search(regex, asset):
-                            should_continue = True
-                            break
+                should_continue = False
+                for regex in self.parent.asset_blacklist:
+                    if re.search(regex, asset):
+                        should_continue = True
+                        break
+
+                for regex in self.parent.asset_whitelist:
+                    if re.search(regex, asset):
+                        should_continue = False
+                        break
 
                 if should_continue:
                     continue
@@ -389,8 +387,8 @@ class HistoryModel(QAbstractItemModel, Logger):
             HistoryColumns.STATUS_TEXT: _('Date'),
             HistoryColumns.DESCRIPTION: _('Description'),
             HistoryColumns.NAME: _('Asset'),
-            HistoryColumns.COIN_VALUE: _('Amount'),
-            HistoryColumns.RUNNING_COIN_BALANCE: _('Balance'),
+            HistoryColumns.COIN_VALUE: _('Tx Amount'),
+            HistoryColumns.RUNNING_COIN_BALANCE: _('Total Balance'),
             HistoryColumns.FIAT_VALUE: fiat_title,
             HistoryColumns.FIAT_ACQ_PRICE: fiat_acq_title,
             HistoryColumns.FIAT_CAP_GAINS: fiat_cg_title,

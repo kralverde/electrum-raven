@@ -60,6 +60,8 @@ class AddressSynchronizer(Logger):
     inherited by wallet
     """
 
+    syncing_assets = set()
+
     def __init__(self, db: 'JsonDB'):
         self.db = db
         self.network = None  # type: Network
@@ -76,8 +78,6 @@ class AddressSynchronizer(Logger):
         self.up_to_date = False
         # thread local storage for caching stuff
         self.threadlocal_cache = threading.local()
-
-        self.requested_assets = set()
 
         self._get_addr_balance_cache = {}
 
@@ -115,21 +115,6 @@ class AddressSynchronizer(Logger):
     def get_address_history_len(self, addr: str) -> int:
         """Return number of transactions where address is involved."""
         return len(self._history_local.get(addr, ()))
-
-    def get_or_request_asset_meta(self, network, asset: str) -> dict:
-        with self.lock:
-            d = self.db.get_asset_meta(asset)
-            if not d and asset not in self.requested_assets:
-                self.requested_assets.update(asset)
-
-                async def get_asset_meta():
-                    data = await network.getmeta_for_asset(asset)
-                    self.db.add_asset_meta(asset, data)
-                    self.requested_assets.discard(asset)
-
-                asyncio.get_event_loop().create_task(get_asset_meta())
-            return d
-
 
     def get_txin_address(self, txi):
         addr = txi.get('address')
@@ -181,6 +166,20 @@ class AddressSynchronizer(Logger):
                 self.verifier = None
             self.network.unregister_callback(self.on_blockchain_updated)
             self.db.put('stored_height', self.get_local_height())
+
+    def get_asset_meta(self, asset):
+        # TODO: Find a better way to do this
+        if asset not in self.syncing_assets:
+            self.syncing_assets.update([asset])
+            self.add_asset(asset)
+        return self.db.get_asset_meta(asset)
+
+    def add_asset(self, asset):
+        if not self.db.get_asset_meta(asset):
+            self.db.asset_meta[asset] = {}
+            self.set_up_to_date(False)
+        if self.synchronizer:
+            self.synchronizer.add_asset(asset)
 
     def add_address(self, address):
         if not self.db.get_addr_history(address):
@@ -350,6 +349,10 @@ class AddressSynchronizer(Logger):
     def receive_tx_callback(self, tx_hash, tx, tx_height):
         self.add_unverified_tx(tx_hash, tx_height)
         self.add_transaction(tx_hash, tx, allow_unrelated=True)
+
+    def receive_asset_callback(self, asset, meta):
+        with self.lock:
+            self.db.add_asset_meta(asset, meta)
 
     def receive_history_callback(self, addr, hist, tx_fees):
         with self.lock:

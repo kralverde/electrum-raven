@@ -195,7 +195,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setCentralWidget(tabs)
 
-        if self.config.get("is_maximized", False):
+        if self.config.get("is_maximized", True):
             self.showMaximized()
 
         self.setWindowIcon(read_QIcon("electrum.png"))
@@ -3273,10 +3273,11 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.need_write_blacklist = False
         msg = 'A list of regular expressions separated by new lines. ' \
               'If an asset\'s name matches any regular expression in this list, ' \
-              'it is marked as spam.'
+              'it will be hidden from view.'
         regex_b = '\n'.join(self.asset_blacklist)
         blacklist_info = HelpLabel(_('Asset Blacklist') + ':', msg)
         regex_e_b = QTextEdit()
+        regex_e_b.setLineWrapMode(QTextEdit.NoWrap)
         regex_e_b.setPlainText(regex_b)
 
         def update_blacklist():
@@ -3291,12 +3292,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         # Asset white list
         self.need_write_whitelist = False
         msg = 'A list of regular expressions seperated by new lines. ' \
-              'If this list is non-empty, only assets that match any regular ' \
-              'expression in this list will be marked as NOT spam. All others ' \
-              'will be marked as spam by default.'
+              'Assets that match any of these regular expressions and would normally ' \
+              'be blocked by the blacklist are shown.'
         regex_w = '\n'.join(self.asset_whitelist)
         whitelist_info = HelpLabel(_('Asset Whitelist') + ':', msg)
         regex_e_w = QTextEdit()
+        regex_e_w.setLineWrapMode(QTextEdit.NoWrap)
         regex_e_w.setPlainText(regex_w)
 
         def update_whitelist():
@@ -3308,7 +3309,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         regex_e_w.textChanged.connect(update_whitelist)
         asset_widgets.append((whitelist_info, regex_e_w))
 
-        show_spam_cb = QCheckBox(_("Show assets marked as spam"))
+        show_spam_cb = QCheckBox(_("Show assets hidden from view"))
         show_spam_cb.setChecked(self.config.get('show_spam_assets', False))
 
         def on_set_show_spam(v):

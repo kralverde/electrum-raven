@@ -106,25 +106,23 @@ class AssetList(MyTreeView):
                 if asset in assets:
                     assets[asset]['balance'] += (c + u + x)
                 else:
-                    meta = self.wallet.get_or_request_asset_meta(self.parent.network, asset)
+                    meta = self.wallet.get_asset_meta(asset)
                     meta['balance'] = (c + u + x)
                     assets[asset] = meta
 
         for asset, meta in assets.items():
 
             if not self.parent.config.get('show_spam_assets', False):
-                if self.parent.asset_whitelist:  # Whitelist overrides blacklist
-                    should_continue = True
-                    for regex in self.parent.asset_whitelist:
-                        if re.search(regex, asset):
-                            should_continue = False
-                            break
-                else:
-                    should_continue = False
-                    for regex in self.parent.asset_blacklist:
-                        if re.search(regex, asset):
-                            should_continue = True
-                            break
+                should_continue = False
+                for regex in self.parent.asset_blacklist:
+                    if re.search(regex, asset):
+                        should_continue = True
+                        break
+
+                for regex in self.parent.asset_whitelist:
+                    if re.search(regex, asset):
+                        should_continue = False
+                        break
 
                 if should_continue:
                     continue
