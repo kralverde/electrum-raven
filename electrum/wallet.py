@@ -505,13 +505,14 @@ class Abstract_Wallet(AddressSynchronizer):
                 continue
             tx = self.db.get_transaction(tx_hash)
             item = {
-                'txid': tx_hash,
+                'txid': tx_hash+'_',
                 'height': height,
                 'confirmations': tx_mined_status.conf,
                 'timestamp': timestamp,
                 'incoming': True if value['RVN'] > 0 else False,
-                'value': value,
-                'balance': balance,
+                'asset': '',
+                'value': value['RVN'],
+                'balance': balance['RVN'],
                 'date': timestamp_to_datetime(timestamp),
                 'label': self.get_label(tx_hash),
                 'txpos_in_block': tx_mined_status.txpos,
@@ -521,34 +522,55 @@ class Abstract_Wallet(AddressSynchronizer):
                 tx_fee = self.get_tx_fee(tx)
                 item['fee'] = Satoshis(tx_fee) if tx_fee is not None else None
             if show_addresses:
-                item['inputs'] = list(map(lambda x: dict((k, x[k]) for k in ('prevout_hash', 'prevout_n')), tx.inputs()))
-                item['outputs'] = list(map(lambda x:{'address':x.address, 'value':Satoshis(x.value)},
+                item['inputs'] = list(
+                    map(lambda x: dict((k, x[k]) for k in ('prevout_hash', 'prevout_n')), tx.inputs()))
+                item['outputs'] = list(map(lambda x: {'address': x.address, 'value': Satoshis(x.value)},
                                            tx.get_outputs_for_UI()))
             # value may be None if wallet is not fully synchronized
-            value = value['RVN']
-            if value is None:
+            value1 = value['RVN']
+            if value1 is None:
                 continue
             # fixme: use in and out values
-            if value < 0:
-                expenditures += -value
+            if value1 < 0:
+                expenditures += -value1
             else:
-                income += value
+                income += value1
             # fiat computations
             if fx and fx.is_enabled() and fx.get_history_config():
-                fiat_fields = self.get_tx_item_fiat(tx_hash, value, fx, tx_fee)
+                fiat_fields = self.get_tx_item_fiat(tx_hash, value1, fx, tx_fee)
                 fiat_value = fiat_fields['fiat_value'].value
                 item.update(fiat_fields)
-                if value < 0:
+                if value1 < 0:
                     capital_gains += fiat_fields['capital_gain'].value
                     fiat_expenditures += -fiat_value
                 else:
                     fiat_income += fiat_value
-            out.append(item)
+            if item['value'] != 0:
+                out.append(item)
+            for asset in value['ASSETS']:
+                item1 = {
+                    'txid': tx_hash + '_' + asset,
+                    'height': height,
+                    'confirmations': tx_mined_status.conf,
+                    'timestamp': timestamp,
+                    'incoming': True if value['ASSETS'][asset] > 0 else False,
+                    'asset': asset,
+                    'value': value['ASSETS'][asset],
+                    'balance': balance['ASSETS'][asset],
+                    'date': timestamp_to_datetime(timestamp),
+                    'label': self.get_label(tx_hash),
+                    'txpos_in_block': tx_mined_status.txpos,
+                    'fee': item['fee'] if show_fees else None,
+                    'inputs': item['inputs'] if show_addresses else None,
+                    'outputs': item['outputs'] if show_addresses else None,
+                }
+                out.append(item1)
+
         # add summary
         if out:
-            b, v = out[0]['balance']['RVN'], out[0]['value']['RVN']
+            b, v = h[0][3]['RVN'], h[0][2]['RVN']
             start_balance = None if b is None or v is None else b - v
-            end_balance = out[-1]['balance']['RVN']
+            end_balance = h[-1][3]['RVN']
             if from_timestamp is not None and to_timestamp is not None:
                 start_date = timestamp_to_datetime(from_timestamp)
                 end_date = timestamp_to_datetime(to_timestamp)

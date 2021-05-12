@@ -169,7 +169,7 @@ class AddressSynchronizer(Logger):
 
     def get_asset_meta(self, asset):
         # TODO: Find a better way to do this
-        if asset not in self.syncing_assets:
+        if asset[-1] != '!' and asset not in self.syncing_assets:
             self.syncing_assets.update([asset])
             self.add_asset(asset)
         return self.db.get_asset_meta(asset)

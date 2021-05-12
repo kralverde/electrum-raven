@@ -269,6 +269,10 @@ class Commands:
     def getassetdata(self, name):
         return self.network.run_from_another_thread(self.network.getmeta_for_asset(name))
 
+    @command('n')
+    def test(self, height):
+        return self.network.run_from_another_thread(self.network.test(height))
+
     @command('')
     def serialize(self, jsontx):
         """Create a transaction from json inputs.

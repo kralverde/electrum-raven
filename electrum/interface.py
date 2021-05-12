@@ -415,21 +415,28 @@ class Interface(Logger):
         return blockchain.deserialize_header(bytes.fromhex(res), height)
 
     async def request_chunk(self, height, tip=None, *, can_return_early=False):
-        index = height // 2016
-        if can_return_early and index in self._requested_chunks:
+        size = 2016  # Checked server side
+
+        # Can't quick checks based on 2016 chunks, because our chunks are variable now.
+        ret = False
+        for mi, ma in self._requested_chunks:
+            if mi <= height < ma:
+                ret = True
+                break
+
+        if can_return_early and ret:
             return
         self.logger.info(f"requesting chunk from height {height}")
-        size = 2016
         if tip is not None:
-            size = min(size, tip - index * 2016 + 1)
+            size = min(size, tip - height + 1)
             size = max(size, 0)
         try:
-            self._requested_chunks.add(index)
-            res = await self.session.send_request('blockchain.block.headers', [index * 2016, size])
+            self._requested_chunks.add((height, height + size))
+            res = await self.session.send_request('blockchain.block.headers', [height, size])
         finally:
-            try: self._requested_chunks.remove(index)
+            try: self._requested_chunks.remove((height, height + size))
             except KeyError: pass
-        conn = self.blockchain.connect_chunk(index, res['hex'])
+        conn = self.blockchain.connect_chunk(height, res['hex'])
         if not conn:
             return conn, 0
         return conn, res['count']
@@ -523,7 +530,7 @@ class Interface(Logger):
             if next_height > height + 10:
                 could_connect, num_headers = await self.request_chunk(height, next_height)
                 if not could_connect:
-                    if height <= constants.net.max_checkpoint():
+                    if height <= constants.net.max_checkpoint_dgw():
                         raise GracefulDisconnect('server chain conflicts with checkpoints or genesis')
                     last, height = await self.step(height)
                     continue

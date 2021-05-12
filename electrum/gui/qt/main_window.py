@@ -195,7 +195,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setCentralWidget(tabs)
 
-        if self.config.get("is_maximized", True):
+        if self.config.get("is_maximized", False):
             self.showMaximized()
 
         self.setWindowIcon(read_QIcon("electrum.png"))

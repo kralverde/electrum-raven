@@ -5,7 +5,7 @@ import re
 
 from PyQt5.QtCore import Qt, QPersistentModelIndex, QModelIndex
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QMouseEvent
-from PyQt5.QtWidgets import QAbstractItemView, QComboBox, QLabel, QMenu, QCheckBox
+from PyQt5.QtWidgets import QAbstractItemView, QComboBox, QLabel, QMenu, QCheckBox, QHeaderView
 
 from electrum.i18n import _
 from electrum.util import ipfs_explorer_URL, profiler, format_satoshis
@@ -30,6 +30,8 @@ class AssetList(MyTreeView):
         self.setModel(QStandardItemModel(self))
         self.asset_meta = {}
         self.update()
+        for col in self.Columns:
+            self.header().setSectionResizeMode(col, QHeaderView.ResizeToContents)
 
     def on_hide_toolbar(self):
         self.update()
@@ -112,6 +114,11 @@ class AssetList(MyTreeView):
 
         for asset, meta in assets.items():
 
+            balance = meta['balance']
+
+            if balance == 0:  # Don't display assets we no longer have
+                continue
+
             if not self.parent.config.get('show_spam_assets', False):
                 should_continue = False
                 for regex in self.parent.asset_blacklist:
@@ -129,7 +136,6 @@ class AssetList(MyTreeView):
 
             self.asset_meta[asset] = meta  # 'Deep' copy
 
-            balance = meta['balance']
             reissuable = ''
             if 'reissuable' in meta:
                 reissuable = str('No' if meta['reissuable'] == 0 else 'Yes')

@@ -24,6 +24,7 @@
 # SOFTWARE.
 
 import re
+import copy
 import os
 import datetime
 from datetime import date
@@ -136,14 +137,15 @@ class HistoryModel(QAbstractItemModel, Logger):
         col = index.column()
         tx_item = self.transactions.value_from_pos(index.row())
         tx_hash = tx_item['txid']
+        tx_asset = tx_item['asset']
         conf = tx_item['confirmations']
         txpos = tx_item['txpos_in_block'] or 0
         height = tx_item['height']
         try:
-            status, status_str = self.tx_status_cache[tx_hash]
+            status, status_str = self.tx_status_cache[tx_hash+'_'+tx_asset]
         except KeyError:
             tx_mined_info = self.tx_mined_info_from_tx_item(tx_item)
-            status, status_str = self.parent.wallet.get_tx_status(tx_hash, tx_mined_info)
+            status, status_str = self.parent.wallet.get_tx_status(tx_hash+'_'+tx_asset, tx_mined_info)
         if role == Qt.UserRole:
             # for sorting
             d = {
@@ -153,7 +155,7 @@ class HistoryModel(QAbstractItemModel, Logger):
                     (conf, -status, -height, -txpos),
                 HistoryColumns.STATUS_TEXT: status_str,
                 HistoryColumns.DESCRIPTION: tx_item['label'],
-                HistoryColumns.NAME: tx_item['value']['ASSETS'].keys(),
+                HistoryColumns.NAME: tx_item['asset'],
                 HistoryColumns.COIN_VALUE:  tx_item['value'],
                 HistoryColumns.RUNNING_COIN_BALANCE: tx_item['balance'],
                 HistoryColumns.FIAT_VALUE:
@@ -179,7 +181,7 @@ class HistoryModel(QAbstractItemModel, Logger):
                     and self.parent.wallet.invoices.paid.get(tx_hash):
                 return QVariant(read_QIcon("seal"))
             elif col in (HistoryColumns.DESCRIPTION, HistoryColumns.COIN_VALUE) \
-                    and role == Qt.ForegroundRole and tx_item['value']['RVN'] < 0:
+                    and role == Qt.ForegroundRole and tx_item['value'] < 0:
                 red_brush = QBrush(QColor("#BC1E1E"))
                 return QVariant(red_brush)
             elif col == HistoryColumns.FIAT_VALUE and role == Qt.ForegroundRole \
@@ -192,38 +194,15 @@ class HistoryModel(QAbstractItemModel, Logger):
         elif col == HistoryColumns.DESCRIPTION:
             return QVariant(tx_item['label'])
         elif col == HistoryColumns.NAME:
-            n_str = ''
-            value = tx_item['value']['RVN']
-            if value != 0:
-                n_str += '\n'
-            for key in tx_item['value']['ASSETS']:
-                n_str += key
-                n_str += '\n'
-            return QVariant(n_str[:-1])
+            return QVariant(tx_item['asset'])
         elif col == HistoryColumns.COIN_VALUE:
-            v_str = ''
-            value = tx_item['value']['RVN']
-            if value != 0:
-                v_str += self.parent.format_amount(value, is_diff=True, whitespaces=True)
-                v_str += '\n'
-            for key in tx_item['value']['ASSETS']:
-                v = tx_item['value']['ASSETS'][key]
-                v_s = self.parent.format_amount(v, is_diff=True, whitespaces=True)
-                v_str += (v_s+'\n')
-            return QVariant(v_str[:-1])
+            value = tx_item['value']
+            v_str = self.parent.format_amount(value, is_diff=True, whitespaces=True)
+            return QVariant(v_str)
         elif col == HistoryColumns.RUNNING_COIN_BALANCE:
-            b_str = ''
-            value = tx_item['value']['RVN']
-            balance = tx_item['balance']['RVN']
-            if value != 0:
-                b_str += self.parent.format_amount(balance, whitespaces=True)
-                b_str += '\n'
-            for key in tx_item['balance']['ASSETS']:
-                if key in tx_item['value']['ASSETS']:
-                    b = tx_item['balance']['ASSETS'][key]
-                    b_s = self.parent.format_amount(b, whitespaces=True)
-                    b_str += (b_s+'\n')
-            return QVariant(b_str[:-1])
+            balance = tx_item['balance']
+            b_str = self.parent.format_amount(balance, whitespaces=True)
+            return QVariant(b_str)
         elif col == HistoryColumns.FIAT_VALUE and 'fiat_value' in tx_item:
             value_str = self.parent.fx.format_fiat(tx_item['fiat_value'].value)
             return QVariant(value_str)
@@ -268,30 +247,25 @@ class HistoryModel(QAbstractItemModel, Logger):
         if fx: fx.history_used_spot = False
         r = self.parent.wallet.get_full_history(domain=self.get_domain(), from_timestamp=None, to_timestamp=None, fx=fx)
         self.set_visibility_of_columns()
-        transactions = []
-        for t in r['transactions']:
 
-            asset = ''
-
-            if t['value']['ASSETS']:
-                asset = list(t['value']['ASSETS'].keys())[0]
-
-            if asset and not self.parent.config.get('show_spam_assets', False):
-                should_continue = False
+        def should_show(asset):
+            if not asset:
+                return True
+            should_show = True
+            if not self.parent.config.get('show_spam_assets', False):
                 for regex in self.parent.asset_blacklist:
                     if re.search(regex, asset):
-                        should_continue = True
+                        should_show = False
                         break
 
                 for regex in self.parent.asset_whitelist:
                     if re.search(regex, asset):
-                        should_continue = False
+                        should_show = True
                         break
 
-                if should_continue:
-                    continue
+            return should_show
 
-            transactions.append(t)
+        transactions = [t for t in r['transactions'] if should_show(t['asset'])]
 
         if transactions == list(self.transactions.values()):
             return
@@ -303,6 +277,8 @@ class HistoryModel(QAbstractItemModel, Logger):
         self.beginInsertRows(QModelIndex(), 0, len(transactions)-1)
         for tx_item in transactions:
             txid = tx_item['txid']
+            txid += '_'
+            txid += tx_item['asset'] # Differentiate tx's since some can have some txid
             self.transactions[txid] = tx_item
         self.endInsertRows()
         if selected_row:
@@ -321,8 +297,9 @@ class HistoryModel(QAbstractItemModel, Logger):
         # update tx_status_cache
         self.tx_status_cache.clear()
         for txid, tx_item in self.transactions.items():
+            txid1 = txid.split('_')[0]
             tx_mined_info = self.tx_mined_info_from_tx_item(tx_item)
-            self.tx_status_cache[txid] = self.parent.wallet.get_tx_status(txid, tx_mined_info)
+            self.tx_status_cache[txid] = self.parent.wallet.get_tx_status(txid1, tx_mined_info)
 
     def set_visibility_of_columns(self):
         def set_visible(col: int, b: bool):
@@ -346,21 +323,24 @@ class HistoryModel(QAbstractItemModel, Logger):
         self.dataChanged.emit(idx, idx, [Qt.DisplayRole, Qt.ForegroundRole])
 
     def update_tx_mined_status(self, tx_hash: str, tx_mined_info: TxMinedInfo):
-        try:
-            row = self.transactions.pos_from_key(tx_hash)
-            tx_item = self.transactions[tx_hash]
-        except KeyError:
-            return
-        self.tx_status_cache[tx_hash] = self.parent.wallet.get_tx_status(tx_hash, tx_mined_info)
-        tx_item.update({
-            'confirmations':  tx_mined_info.conf,
-            'timestamp':      tx_mined_info.timestamp,
-            'txpos_in_block': tx_mined_info.txpos,
-            'date':           timestamp_to_datetime(tx_mined_info.timestamp),
-        })
-        topLeft = self.createIndex(row, 0)
-        bottomRight = self.createIndex(row, len(HistoryColumns) - 1)
-        self.dataChanged.emit(topLeft, bottomRight)
+
+        for key in self.transactions:
+            if tx_hash == key.split('_')[0]:
+                try:
+                    row = self.transactions.pos_from_key(tx_hash)
+                    tx_item = self.transactions[tx_hash]
+                    self.tx_status_cache[tx_hash] = self.parent.wallet.get_tx_status(tx_hash, tx_mined_info)
+                    tx_item.update({
+                        'confirmations': tx_mined_info.conf,
+                        'timestamp': tx_mined_info.timestamp,
+                        'txpos_in_block': tx_mined_info.txpos,
+                        'date': timestamp_to_datetime(tx_mined_info.timestamp),
+                    })
+                    topLeft = self.createIndex(row, 0)
+                    bottomRight = self.createIndex(row, len(HistoryColumns) - 1)
+                    self.dataChanged.emit(topLeft, bottomRight)
+                except KeyError:
+                    pass
 
     def on_fee_histogram(self):
         for tx_hash, tx_item in list(self.transactions.items()):
@@ -368,7 +348,7 @@ class HistoryModel(QAbstractItemModel, Logger):
             if tx_mined_info.conf > 0:
                 # note: we could actually break here if we wanted to rely on the order of txns in self.transactions
                 continue
-            self.update_tx_mined_status(tx_hash, tx_mined_info)
+            self.update_tx_mined_status(tx_hash.split('_')[0], tx_mined_info)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole):
         assert orientation == Qt.Horizontal
@@ -426,7 +406,26 @@ class AssetHistoryModel(HistoryModel):
         if fx: fx.history_used_spot = False
         r = self.parent.wallet.get_full_history(domain=self.get_domain(), from_timestamp=None, to_timestamp=None, fx=fx)
         self.set_visibility_of_columns()
-        transactions = [t for t in r['transactions'] if self.asset in t['value']['ASSETS']]
+
+        def should_show(asset):
+            if asset != self.asset:
+                return False
+            should_show = True
+            if not self.parent.config.get('show_spam_assets', False):
+                for regex in self.parent.asset_blacklist:
+                    if re.search(regex, asset):
+                        should_show = False
+                        break
+
+                for regex in self.parent.asset_whitelist:
+                    if re.search(regex, asset):
+                        should_show = True
+                        break
+
+            return should_show
+
+        transactions = [t for t in r['transactions'] if should_show(t['asset'])]
+
         if transactions == list(self.transactions.values()):
             return
         old_length = len(self.transactions)
@@ -437,6 +436,8 @@ class AssetHistoryModel(HistoryModel):
         self.beginInsertRows(QModelIndex(), 0, len(transactions) - 1)
         for tx_item in transactions:
             txid = tx_item['txid']
+            txid += '_'
+            txid += tx_item['asset']  # Differentiate tx's since some can have some txid
             self.transactions[txid] = tx_item
         self.endInsertRows()
         if selected_row:
@@ -456,8 +457,9 @@ class AssetHistoryModel(HistoryModel):
         # update tx_status_cache
         self.tx_status_cache.clear()
         for txid, tx_item in self.transactions.items():
+            txid1 = txid.split('_')[0]
             tx_mined_info = self.tx_mined_info_from_tx_item(tx_item)
-            self.tx_status_cache[txid] = self.parent.wallet.get_tx_status(txid, tx_mined_info)
+            self.tx_status_cache[txid] = self.parent.wallet.get_tx_status(txid1, tx_mined_info)
 
 class HistoryList(MyTreeView, AcceptFileDragDrop):
     filter_columns = [HistoryColumns.STATUS_TEXT,
@@ -499,8 +501,9 @@ class HistoryList(MyTreeView, AcceptFileDragDrop):
 
         self.header().setStretchLastSection(False)
         for col in HistoryColumns:
-            sm = QHeaderView.Stretch if col == self.stretch_column else QHeaderView.ResizeToContents
-            self.header().setSectionResizeMode(col, sm)
+            # sm = QHeaderView.Stretch if col == self.stretch_column else QHeaderView.ResizeToContents
+            self.header().setSectionResizeMode(col, QHeaderView.ResizeToContents)
+
 
     def format_date(self, d):
         return str(datetime.date(d.year, d.month, d.day)) if d else _('None')
@@ -676,6 +679,7 @@ class HistoryList(MyTreeView, AcceptFileDragDrop):
             column_title = self.hm.headerData(column, Qt.Horizontal, Qt.DisplayRole)
             column_data = self.hm.data(idx, Qt.DisplayRole).value()
         tx_hash = tx_item['txid']
+        tx_hash = tx_hash.split('_')[0]
         tx = self.wallet.db.get_transaction(tx_hash)
         if not tx:
             return
@@ -714,10 +718,9 @@ class HistoryList(MyTreeView, AcceptFileDragDrop):
         if tx_URL:
             menu.addAction(_("View on block explorer"), lambda: webopen(tx_URL))
 
-        asset_s = tx_item['value']['ASSETS']
-        if asset_s: # Non empty
-            asset = list(tx_item['value']['ASSETS'].keys())[0]
-            menu.addAction(_("Mark asset as spam"), lambda: self.parent.mark_asset_as_spam(asset))
+        asset_s = tx_item['asset']
+        if asset_s != '': # Non empty
+            menu.addAction(_("Mark asset as spam"), lambda: self.parent.mark_asset_as_spam(asset_s))
 
         menu.exec_(self.viewport().mapToGlobal(position))
 
