@@ -803,13 +803,9 @@ class Network(Logger):
     async def _init_headers_file(self):
         b = blockchain.get_best_chain()
         filename = b.path()
-        # Subtract 1 because DGW starts in the middle of the last one
-        length = HEADER_SIZE * (len(constants.net.CHECKPOINTS_DGW) + nDGWActivationBlock)
-        if not os.path.exists(filename) or os.path.getsize(filename) < length:
+        if not os.path.exists(filename) or os.path.getsize(filename) < HEADER_SIZE:
             with open(filename, 'wb') as f:
-                if length > 0:
-                    f.seek(length-1)
-                    f.write(b'\x00')
+                f.write(bytes(HEADER_SIZE))
             util.ensure_sparse_file(filename)
         with b.lock:
             b.update_size()

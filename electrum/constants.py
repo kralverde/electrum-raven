@@ -47,16 +47,7 @@ class AbstractNet:
 
     @classmethod
     def max_checkpoint(cls) -> int:
-        return max(0, len(cls.CHECKPOINTS) * 2016 - 1)
-
-    @classmethod
-    def max_checkpoint_dgw(cls) -> int:
-        try:
-            c = cls._dgw_cp_count
-        except AttributeError as e:
-            c = max(0, len(cls.CHECKPOINTS_DGW)+338778)
-            cls._dgw_cp_count = c   # cache for speed
-        return c
+        return max(0, (len(cls.CHECKPOINTS) - 2) * 2016 - 1)
 
 
 class BitcoinMainnet(AbstractNet):
@@ -71,7 +62,6 @@ class BitcoinMainnet(AbstractNet):
     DEFAULT_PORTS = {'t': '50001', 's': '50002'}
     DEFAULT_SERVERS = read_json('servers.json', {})
     CHECKPOINTS = read_json('checkpoints.json', [])
-    CHECKPOINTS_DGW = read_json('dgw_checkpoints.json', [])
 
     XPRV_HEADERS = {
         'standard':    0x0488ade4,  # xprv
@@ -104,7 +94,6 @@ class BitcoinTestnet(AbstractNet):
     DEFAULT_PORTS = {'t': '51001', 's': '51002'}
     DEFAULT_SERVERS = read_json('servers_testnet.json', {})
     CHECKPOINTS = read_json('checkpoints_testnet.json', [])
-    CHECKPOINTS_DGW = []
 
 
     XPRV_HEADERS = {

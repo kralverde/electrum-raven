@@ -174,8 +174,8 @@ def read_blockchains(config: 'SimpleConfig'):
                             prev_hash=None)
     blockchains[constants.net.GENESIS] = best_chain
     # consistency checks
-    if best_chain.height() > constants.net.max_checkpoint_dgw():
-        header_after_cp = best_chain.read_header(constants.net.max_checkpoint_dgw() + 1)
+    if best_chain.height() > constants.net.max_checkpoint():
+        header_after_cp = best_chain.read_header(constants.net.max_checkpoint() + 1)
         if not header_after_cp or not best_chain.can_connect(header_after_cp, check_height=False):
             _logger.info("[blockchain] deleting best chain. cannot connect header after last cp to last cp.")
             os.unlink(best_chain.path())
@@ -197,7 +197,7 @@ def read_blockchains(config: 'SimpleConfig'):
         prev_hash = (64 - len(prev_hash)) * "0" + prev_hash  # left-pad with zeroes
         first_hash = (64 - len(first_hash)) * "0" + first_hash
         # forks below the max checkpoint are not allowed
-        if forkpoint <= constants.net.max_checkpoint_dgw():
+        if forkpoint <= constants.net.max_checkpoint():
             delete_chain(filename, "deleting fork below max checkpoint")
             return
         # find parent (sorting by forkpoint guarantees it's already instantiated)
@@ -250,8 +250,6 @@ class Blockchain(Logger):
         # assert (parent is None) == (forkpoint == 0)
         if 0 < forkpoint <= constants.net.max_checkpoint():
             raise Exception(f"cannot fork below max checkpoint. forkpoint: {forkpoint}")
-        elif constants.net.max_checkpoint() < forkpoint <= constants.net.max_checkpoint_dgw():
-            raise Exception(f"cannot fork below max dgw checkpoint. forkpoint: {forkpoint}")
         Logger.__init__(self)
         self.config = config
         self.forkpoint = forkpoint  # height of first header
@@ -271,10 +269,6 @@ class Blockchain(Logger):
     @property
     def checkpoints(self):
         return constants.net.CHECKPOINTS
-
-    @property
-    def checkpoints_dgw(self):
-        return constants.net.CHECKPOINTS_DGW
 
     def get_max_child(self) -> Optional[int]:
         children = self.get_direct_children()
@@ -322,6 +316,7 @@ class Blockchain(Logger):
 
     def check_header(self, header: dict) -> bool:
         header_hash = hash_header(header)
+
         height = header.get('block_height')
         return self.check_hash(height, header_hash)
 
@@ -379,7 +374,7 @@ class Blockchain(Logger):
 
         bits = cls.target_to_bits(target)
         if bits != header.get('bits'):
-            raise Exception("bits mismatch: %s vs %s from height %s" % (bits, header.get('bits'), height))
+            raise Exception("bits mismatch: %s vs %s from height %s ... %s" % (bits, header.get('bits'), height, target))
         if header['timestamp'] >= KawpowActivationTS:
             hash_func = kawpow_hash
         elif header['timestamp'] >= X16Rv2ActivationTS:
@@ -616,39 +611,12 @@ class Blockchain(Logger):
             index = height // 2016
             h, t = self.checkpoints[index]
             return h
-        elif not constants.net.TESTNET and height >= nDGWActivationBlock and height < constants.net.max_checkpoint_dgw():
-            h, t, _ = self.checkpoints_dgw[height - nDGWActivationBlock].split(",")
-            return h.zfill(64) # to save space hashes are stored without leading zeros
         else:
             header = self.read_header(height)
             if header is None:
                 raise MissingHeader(height)
             return hash_header(header)
 
-    #    def get_target(self, index: int) -> int:
-    #        # compute target from chunk x, used in chunk x+1
-    #        if constants.net.TESTNET:
-    #            return 0
-    #        if index == -1:
-    #            return MAX_TARGET
-    #        if index < len(self.checkpoints):
-    #            h, t = self.checkpoints[index]
-    #            return t
-    #        # new target
-    #        first = self.read_header(index * 2016)
-    #        last = self.read_header(index * 2016 + 2015)
-    #        if not first or not last:
-    #            raise MissingHeader()
-    #        bits = last.get('bits')
-    #        target = self.bits_to_target(bits)
-    #        nActualTimespan = last.get('timestamp') - first.get('timestamp')
-    #        nTargetTimespan = 14 * 24 * 60 * 60
-    #        nActualTimespan = max(nActualTimespan, nTargetTimespan // 4)
-    #        nActualTimespan = min(nActualTimespan, nTargetTimespan * 4)
-    #        new_target = min(MAX_TARGET, (target * nActualTimespan) // nTargetTimespan)
-    #        # not any target can be represented in 32 bits:
-    #        new_target = self.bits_to_target(self.target_to_bits(new_target))
-    #        return new_target
 
     @classmethod
     def bits_to_target(cls, bits: int) -> int:
@@ -687,13 +655,6 @@ class Blockchain(Logger):
             # last = self.read_header(height - 1)
             if last is None:
                 last = self.read_header(height)
-                # last = chain.get(height - 1)
-                if last is None and nDGWActivationBlock <= height < len(self.checkpoints_dgw) + nDGWActivationBlock:
-                    _, target, timestamp = self.checkpoints_dgw[height - nDGWActivationBlock].split(",")
-                    last = {
-                        'bits': int(target, 16),
-                        'timestamp': int(timestamp, 16),
-                    }
                 assert last is not None
             return last
 
@@ -751,21 +712,17 @@ class Blockchain(Logger):
         # Before we switched to Dark Wave Gravity Difficulty,
         # We used bitcoin's method of calculating difficulty.
         # The bits of each block (the difficulty) was the same for
-        # The entire 2016 block checkpoint.
+        # The entire 2016 block checkpoint. Note that the last block hash to target
+        # pairing in checkpoints.json is incorrect but necessary due to DGW activating
+        # in the middle of that chunk.
         elif height // 2016 < len(self.checkpoints) and height < nDGWActivationBlock:
             h, t = self.checkpoints[height // 2016]
             return t
-        # After DGW, the difficulty of blocks is determined by
-        # the last 180 blocks before it.
-        elif height < constants.net.max_checkpoint_dgw():
-            h, t, _ = self.checkpoints_dgw[height - nDGWActivationBlock].split(",")
-            t = self.bits_to_target(int(t, 16))
-            return t
         # There was a difficulty reset for kawpow
-        elif not constants.net.TESTNET and height in range(1219736,1219736+180): # kawpow reset
+        elif not constants.net.TESTNET and height in range(1219736, 1219736+180): # kawpow reset
             return KAWPOW_LIMIT
         else:
-            # Now we no longer have cached checkpoints and need to compute our own
+            # Now we no longer have cached checkpoints and need to compute our own DWG targets
             return self.get_target_dgwv3(height, chain)
 
     def chainwork_of_header_at_height(self, height: int) -> int:

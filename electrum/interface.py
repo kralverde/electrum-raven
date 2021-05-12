@@ -530,7 +530,7 @@ class Interface(Logger):
             if next_height > height + 10:
                 could_connect, num_headers = await self.request_chunk(height, next_height)
                 if not could_connect:
-                    if height <= constants.net.max_checkpoint_dgw():
+                    if height <= constants.net.max_checkpoint():
                         raise GracefulDisconnect('server chain conflicts with checkpoints or genesis')
                     last, height = await self.step(height)
                     continue
@@ -632,8 +632,8 @@ class Interface(Logger):
         async def iterate():
             nonlocal height, header
             checkp = False
-            if height <= constants.net.max_checkpoint():
-                height = constants.net.max_checkpoint()
+            if height <= 0:
+                height = 0
                 checkp = True
             header = await self.get_block_header(height, 'backward')
             chain = blockchain.check_header(header) if 'mock' not in header else header['mock']['check'](header)
@@ -641,7 +641,7 @@ class Interface(Logger):
             if chain or can_connect:
                 return False
             if checkp:
-                raise GracefulDisconnect("server chain conflicts with checkpoints")
+                raise GracefulDisconnect("server chain is invalid")
             return True
 
         bad, bad_header = height, header
