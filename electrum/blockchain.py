@@ -43,17 +43,18 @@ _logger = get_logger(__name__)
 HEADER_SIZE = 120  # bytes
 PRE_KAWPOW_HEADER_SIZE = 80
 
-nDGWActivationBlock = 338778
 DGW_PASTBLOCKS = 180
 
 if constants.net.TESTNET:
     X16Rv2ActivationTS = 1567533600
     KawpowActivationTS = 1585159200
     KawpowActivationHeight = 231544
+    nDGWActivationBlock = 229838
 else:
     X16Rv2ActivationTS = 1569945600
     KawpowActivationTS = 1588788000
     KawpowActivationHeight = 1219736
+    nDGWActivationBlock = 338778
 
 try:
     import x16r_hash
