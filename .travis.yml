@@ -101,5 +101,5 @@ deploy:
   overwrite: true
   on:
     tags: true
-    repo: standard-error/electrum-raven
+    repo: Electrum-RVN-SIG/electrum-ravencoin
 after_deploy: ls -al contrib/build-wine/dist/

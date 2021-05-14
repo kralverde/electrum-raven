@@ -19,8 +19,8 @@ from electrum.logging import Logger
 
 
 class UpdateCheck(QWidget, Logger):
-    url = "https://raw.githubusercontent.com/kralverde/electrum-raven/master/check-version.json"
-    download_url = "https://github.com/kralverde/electrum-raven/releases"
+    url = "https://raw.githubusercontent.com/Electrum-RVN-SIG/electrum-ravencoin/master/check-version.json"
+    download_url = "https://github.com/Electrum-RVN-SIG/electrum-ravencoin/releases"
 
     VERSION_ANNOUNCEMENT_SIGNING_KEYS = (
         "RPuQNvDVBC5Q4fXKyfYLjrunbyqiEYckP5",

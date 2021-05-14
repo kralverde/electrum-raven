@@ -7,7 +7,7 @@
 ;Variables
 
   !define PRODUCT_NAME "Electrum-RVN"
-  !define PRODUCT_WEB_SITE "https://github.com/standard-error/electrum-raven/"
+  !define PRODUCT_WEB_SITE "https://github.com/Electrum-RVN-SIG/electrum-ravencoin"
   !define PRODUCT_PUBLISHER "nBits"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 
