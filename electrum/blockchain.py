@@ -49,7 +49,7 @@ if constants.net.TESTNET:
     X16Rv2ActivationTS = 1567533600
     KawpowActivationTS = 1585159200
     KawpowActivationHeight = 231544
-    nDGWActivationBlock = 229838
+    nDGWActivationBlock = 1
 else:
     X16Rv2ActivationTS = 1569945600
     KawpowActivationTS = 1588788000

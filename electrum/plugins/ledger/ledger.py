@@ -757,8 +757,6 @@ class Ledger_KeyStore(Hardware_KeyStore):
         finally:
             self.handler.finished()
 
-        raise Exception()
-
         for i, txin in enumerate(tx.inputs()):
             signingPos = inputs[i][4]
             tx.add_signature_to_txin(i, signingPos, bh2u(signatures[i]))

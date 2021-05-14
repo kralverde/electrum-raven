@@ -93,7 +93,7 @@ class BitcoinTestnet(AbstractNet):
     GENESIS = "000000ecfc5e6324a079542221d00e10362bdc894d56500c414060eea8a3ad5a"
     DEFAULT_PORTS = {'t': '51001', 's': '51002'}
     DEFAULT_SERVERS = read_json('servers_testnet.json', {})
-    CHECKPOINTS = read_json('checkpoints_testnet.json', [])
+    CHECKPOINTS = []
 
 
     XPRV_HEADERS = {
