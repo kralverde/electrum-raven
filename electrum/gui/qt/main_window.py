@@ -1467,7 +1467,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         outputs, fee_estimator, tx_desc, coins = self.read_send_tab()
         if not outputs:
             _type, addr = self.get_payto_or_dummy()
-            outputs = [TxOutput(_type, addr, amount)]
+            script = bitcoin.address_to_script(addr)
+            outputs = [TxOutput(_type, addr, amount, False, '', script)]
         is_sweep = bool(self.tx_external_keypairs)
         make_tx = lambda fee_est: \
             self.wallet.make_unsigned_transaction(

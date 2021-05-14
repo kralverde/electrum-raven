@@ -535,7 +535,7 @@ class Interface(Logger):
                     last, height = await self.step(height)
                     continue
                 self.network.trigger_callback('network_updated')
-                height = (height // 2016 * 2016) + num_headers
+                height = height + num_headers
                 assert height <= next_height+1, (height, self.tip)
                 last = 'catchup'
             else:

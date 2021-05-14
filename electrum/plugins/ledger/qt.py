@@ -1,14 +1,14 @@
 from functools import partial
 
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt
-from PyQt5.QtWidgets import QInputDialog, QLabel, QVBoxLayout, QLineEdit
+from PyQt5.QtWidgets import QInputDialog, QLabel, QVBoxLayout, QLineEdit, QWidget, QPushButton
 
 from electrum.i18n import _
 from electrum.plugin import hook
 from electrum.wallet import Standard_Wallet
 from electrum.gui.qt.util import WindowModalDialog
 
-from .ledger import LedgerPlugin
+from .ledger import LedgerPlugin, AtomicBoolean
 from ..hw_wallet.qt import QtHandlerBase, QtPluginBase
 from ..hw_wallet.plugin import only_hook_if_libraries_available
 
@@ -32,22 +32,76 @@ class Plugin(LedgerPlugin, QtPluginBase):
 
             menu.addAction(_("Show on Ledger"), show_address)
 
+class Abstract_Ledger_UI(WindowModalDialog):
+    def __init__(self, atomic_b: AtomicBoolean, parent=None, title='Abstract Ledger UI Title'):
+        super().__init__(parent, title)
+        # self.setWindowModality(Qt.NonModal)
+        # Thread interrupter. If we cancel, set true
+        self.atomic_b = atomic_b
+        self.label = QLabel('')
+        self.label.setText("Generating Information...")
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.label)
+
+        self.cancel = QPushButton('Cancel')
+
+        def end():
+            self.finished()
+            self.close()
+            self.atomic_b.set_true()
+        self.cancel.clicked.connect(end)
+        layout.addWidget(self.cancel)
+
+        self.setLayout(layout)
+        self.setWindowFlags(self.windowFlags() | Qt.CustomizeWindowHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_text)
+
+    # Implemented in subclasses
+    def begin(self):
+        self.timer.start(500)
+
+    def finished(self):
+        self.timer.stop()
+
+    def update_text(self):
+        pass
+
+class Parsing_UI(Abstract_Ledger_UI):
+    def __init__(self, parse_data, atomic_b, parent=None):
+        super().__init__(atomic_b, parent, 'Parsing Transaction...')
+        self.parse_data = parse_data
+
+    def update_text(self):
+        self.label.setText(self.parse_data.parsed_string())
+
+class Signing_UI(Abstract_Ledger_UI):
+    def __init__(self, parse_data, atomic_b, parent=None):
+        super().__init__(atomic_b, parent, 'Signing Transaction...')
+        self.parse_data = parse_data
+
+    def update_text(self):
+        self.label.setText(self.parse_data.parsed_string())
+
 
 class Ledger_Handler(QtHandlerBase):
     setup_signal = pyqtSignal()
     auth_signal = pyqtSignal(object)
-    parse_signal = pyqtSignal(object, object)
+    parse_start_signal = pyqtSignal(object, object)
+    parse_stop_signal = pyqtSignal()
+    signing_start_signal = pyqtSignal(object, object)
+    signing_stop_signal = pyqtSignal()
 
     def __init__(self, win):
         super(Ledger_Handler, self).__init__(win, 'Ledger')
         self.setup_signal.connect(self.setup_dialog)
         self.auth_signal.connect(self.auth_dialog)
-        self.parse_signal.connect(self.parse_dialog)
-        self.loop_ui = False
-        #Trolled by garbage collection
-        self.ui_tracker = None
-        self.timer = QTimer()
-        self.ui_tx_label = QLabel('')
+        self.parse_start_signal.connect(self.parse_dialog)
+        self.parse_stop_signal.connect(self.stop_parse_dialog)
+        self.signing_start_signal.connect(self.signing_dialog)
+        self.signing_stop_signal.connect(self.stop_signing_dialog)
 
     def word_dialog(self, msg):
         response = QInputDialog.getText(self.top_level_window(), "Ledger Wallet Authentication", msg,
@@ -58,31 +112,25 @@ class Ledger_Handler(QtHandlerBase):
             self.word = str(response[0])
         self.done.set()
 
-    def parse_dialog(self, ui_tracker, start):
-        
-        #Why do I need to do this?
-        self.ui_tx_label = QLabel('')
-        if start:
-            self.ui_tracker = ui_tracker
-            self.clear_dialog()
-            self.dialog = dialog = WindowModalDialog(self.top_level_window(), _("Ledger Status"))
+    def parse_dialog(self, stopped_boolean, parse_data):
+        self.clear_dialog()
+        self.dialog = Parsing_UI(parse_data, stopped_boolean, self.top_level_window())
+        self.dialog.show()
+        self.dialog.begin()
 
-            def update():
-                self.ui_tx_label.setText(self.ui_tracker.parsed_string())
+    def signing_dialog(self, stopped_boolean, parse_data):
+        self.clear_dialog()
+        self.dialog = Signing_UI(parse_data, stopped_boolean, self.top_level_window())
+        self.dialog.show()
+        self.dialog.begin()
 
-            update()
-            self.timer.timeout.connect(update)
-            self.timer.start(500)
-            vbox = QVBoxLayout(dialog)
-            vbox.addWidget(self.ui_tx_label)
+    def stop_parse_dialog(self):
+        if self.dialog is Parsing_UI:
+            self.dialog.finished()
 
-            # Remove close button
-            dialog.setWindowFlags(dialog.windowFlags() | Qt.CustomizeWindowHint)
-            dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowCloseButtonHint)
-
-            dialog.show()
-        else:
-            self.timer.stop()
+    def stop_signing_dialog(self):
+        if self.dialog is Signing_UI:
+            self.dialog.finished()
 
     def message_dialog(self, msg):
         self.clear_dialog()
@@ -115,8 +163,26 @@ class Ledger_Handler(QtHandlerBase):
         self.done.wait()
         return
 
-    def parse_ui(self, ui_tracker, start=True):
-        self.parse_signal.emit(ui_tracker, start)
+    def get_parse_ui(self, atomic_b, data):
+        self.parse_start_signal.emit(atomic_b, data)
+        return
+
+    def finished_parse(self):
+        self.parse_stop_signal.emit()
+        return
+
+    def get_signing_ui(self, atomic_b, data):
+        self.signing_start_signal.emit(atomic_b, data)
+        return
+
+    def finished_signing(self):
+        self.signing_stop_signal.emit()
+        return
+
+    def finished(self):
+        if self.dialog is not None:
+            self.dialog.close()
+        super().finished()
 
     def setup_dialog(self):
         self.show_error(_('Initialization of Ledger HW devices is currently disabled.'))

@@ -1,7 +1,8 @@
 from struct import pack, unpack
 import hashlib
-import sys
-import traceback
+import threading
+import time
+import datetime
 
 from electrum import ecc
 from electrum import constants
@@ -222,35 +223,64 @@ class Ledger_Client():
         return True, response, response
 
 
-class tracker_object:
-    def __init__(self):
-        # Print info for log / non-gui users
+class SigningTracker:
+    def __init__(self, total_inputs):
+        self.total_inputs = total_inputs
+        self.ticker = 0
+        self.start = time.time()
+        self.last_ETA = 'Calculating...'
+
+    def tick(self):
+        self.ticker += 1
+
+    def parsed_string(self):
+        line = 'Signing transaction data...\n\n'
+
+        line += 'Input: {}/{}\n\n'.format(
+            self.ticker,
+            self.total_inputs)
+
+        tx_delta = self.ticker
+        sec_delta = time.time() - self.start
+        tx_left = self.total_inputs - self.ticker
+
+        eta = self.last_ETA
+        if tx_delta != 0 and sec_delta != 0:
+            secs = sec_delta / tx_delta * tx_left
+            eta = str(datetime.timedelta(seconds=round(secs)))
+
+        line += 'ETA: {}'.format(eta)
+        self.last_ETA = eta
+        return line
+
+class ParsingTracker:
+    def __init__(self, total_tx):
+        self.total_transactions = total_tx
+        self.send_warning = False
+        if self.total_transactions > 2000:  # Arbitrary number
+            self.send_warning = True
+
         self.ticker = 0
 
         self.tx_count = 0
-        self.tx_num = 0
+        self.tot_tx = 0
         self.in_count = 0
-        self.in_num = 0
+        self.tot_in = 0
         self.out_count = 0
-        self.out_num = 0
+        self.tot_out = 0
 
-        self.is_long_time = False
+        self.start_time = time.time()
+        self.last_ETA = 'Computing...'
 
-    def init_tx_amt(self, amt):
-        self.tx_num = amt
+    def set_tx_amt(self, amt):
+        self.tot_tx = amt
 
-    def new_tx(self):
+    def tick_tx(self):
         self.tx_count += 1
         self.in_count = 0
-        self.in_num = 0
-        self.out_num = 0
+        self.tot_in = 0
         self.out_count = 0
-
-    def init_io_amt(self, ins, outs):
-        self.in_num = ins
-        self.out_num = outs
-        if ins + outs > 500:
-            self.is_long_time = True
+        self.tot_out = 0
 
     def tick_in(self):
         self.log_info()
@@ -260,23 +290,70 @@ class tracker_object:
         self.log_info()
         self.out_count += 1
 
+    def set_io_amt(self, ins, outs):
+        self.tot_in = ins
+        self.tot_out = outs
+
     def log_info(self):
         self.ticker += 1
-        if self.ticker % 100 == 0:
+        if self.ticker % 500 == 0:
             _logger.info(self.parsed_string())
 
     def parsed_string(self):
-        line = 'Parsing transaction data...\n'
-        if self.is_long_time:
-            line += 'It looks there is a lot of information.\nPlease ensure your ledger remains unlocked.\n'
-        line += 'Tx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}'.format(
+        line = 'Parsing transaction data...\n\n'
+        if self.send_warning:
+            line += 'It looks there is a lot of data to parse.\n' \
+                    'This occurs if you receive RVN from transactions\n' \
+                    'with a lot of other outputs such as mining directly\n' \
+                    'to your ledger.\n' \
+                    'These long wait times are due to hardware limitations.\n' \
+                    'You may want to turn off your ledger\'s auto-lock to prevent\n' \
+                    'This transaction from failing due to your ledger locking.\n' \
+                    'These settings can be found in:\n' \
+                    'Settings > Security > Screen Saver > Off\n' \
+                    'Once this transaction is complete and sent, your RVN will\n' \
+                    'be consolidated and transaction parsing times will be\n' \
+                    'unnoticeable in the future.\n\n'
+        line += 'Tx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}\n'.format(
             self.tx_count,
-            self.tx_num,
+            self.tot_tx,
             self.in_count,
-            self.in_num,
+            self.tot_in,
             self.out_count,
-            self.out_num)
+            self.tot_out)
+        line += 'Total Completion: {}/{}\n'.format(self.ticker, self.total_transactions)
+
+        tx_delta = self.ticker
+        sec_delta = time.time() - self.start_time
+        tx_left = self.total_transactions - self.ticker
+
+        eta = self.last_ETA
+        if tx_delta != 0 and sec_delta != 0:
+            secs = sec_delta / tx_delta * tx_left
+            eta = str(datetime.timedelta(seconds=round(secs)))
+
+        line += 'ETA: {}'.format(eta)
+        self.last_ETA = eta
         return line
+
+
+# I am not sure if python booleans are atomic
+class AtomicBoolean:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.boolean = False
+
+    def set_true(self):
+        with self.lock:
+            self.boolean = True
+
+    def set_false(self):
+        with self.lock:
+            self.boolean = False
+
+    def get_value(self):
+        with self.lock:
+            return self.boolean
 
 
 class modified_btchip:
@@ -285,7 +362,7 @@ class modified_btchip:
         self.dongle = original.dongle
 
     # Same code as normal with counters stuck in
-    def getTrustedInput(self, ui_tracker, transaction, index):
+    def getTrustedInput(self, atomic_boolean: AtomicBoolean, ui_tracker: ParsingTracker, transaction, index):
         result = {}
         # Header
         apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x00, 0x00]
@@ -297,9 +374,11 @@ class modified_btchip:
         self.dongle.exchange(bytearray(apdu))
         # Each input
 
-        ui_tracker.init_io_amt(len(transaction.inputs), len(transaction.outputs))
+        ui_tracker.set_io_amt(len(transaction.inputs), len(transaction.outputs))
 
         for trinput in transaction.inputs:
+            if atomic_boolean.get_value():
+                raise UserWarning()
             apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
             params = bytearray(trinput.prevOut)
             writeVarint(len(trinput.script), params)
@@ -335,6 +414,8 @@ class modified_btchip:
         # Each output
         indexOutput = 0
         for troutput in transaction.outputs:
+            if atomic_boolean.get_value():
+                raise UserWarning()
             apdu = [btchip.BTCHIP_CLA, btchip.BTCHIP_INS_GET_TRUSTED_INPUT, 0x80, 0x00]
             params = bytearray(troutput.amount)
             writeVarint(len(troutput.script), params)
@@ -537,17 +618,29 @@ class Ledger_KeyStore(Hardware_KeyStore):
 
         # self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
 
-        ui_tracker = tracker_object()
-        ui_tracker.init_tx_amt(len(inputs))
+        def get_parse_count():
+            c = 0
+            for utxo in inputs:
+                if not segwitTransaction and not p2shTransaction:
+                    txtmp = bitcoinTransaction(bfh(utxo[0]))
+                    c += len(txtmp.inputs) + len(txtmp.outputs)
+            return c
+
+        ui_tracker = ParsingTracker(get_parse_count())
+        ui_tracker.set_tx_amt(len(inputs))
+        atomic_b = AtomicBoolean()
         self.handler.finished()
-        self.handler.parse_ui(ui_tracker)
+        self.handler.get_parse_ui(atomic_b, ui_tracker)
 
         try:
             # tx, total tx, curr in, in in tx, curr out, in in out
             # Get trusted inputs from the original transactions
             for utxo in inputs:
 
-                ui_tracker.new_tx()
+                if atomic_b.get_value():
+                    raise UserWarning()
+
+                ui_tracker.tick_tx()
 
                 sequence = int_to_hex(utxo[5], 4)
                 if segwitTransaction:
@@ -558,7 +651,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     redeemScripts.append(bfh(utxo[2]))
                 elif not p2shTransaction:
                     txtmp = bitcoinTransaction(bfh(utxo[0]))
-                    trustedInput = modified_btchip(self.get_client()).getTrustedInput(ui_tracker, txtmp,
+                    trustedInput = modified_btchip(self.get_client()).getTrustedInput(atomic_b, ui_tracker,
+                                                                                      txtmp,
                                                                                       utxo[1])
                     trustedInput['sequence'] = sequence
                     chipInputs.append(trustedInput)
@@ -569,7 +663,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     chipInputs.append({'value': tmp, 'sequence': sequence})
                     redeemScripts.append(bfh(utxo[2]))
 
-            self.handler.parse_ui(None, False)
+            self.handler.finished_parse()
             self.handler.finished()
             self.handler.show_message(_("Confirm Transaction on your Ledger device..."))
             # Sign all inputs
@@ -577,6 +671,10 @@ class Ledger_KeyStore(Hardware_KeyStore):
             inputIndex = 0
             rawTx = tx.serialize_to_network()
             self.get_client().enableAlternate2fa(False)
+
+            ui_tracker = SigningTracker(len(inputs))
+            atomic_b = AtomicBoolean()
+
             if segwitTransaction:
                 self.get_client().startUntrustedTransaction(True, inputIndex,
                                                             chipInputs, redeemScripts[inputIndex], version=tx.version)
@@ -586,6 +684,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
                 outputData['outputData'] = txOutput
                 if outputData['confirmationNeeded']:
                     outputData['address'] = output
+                    self.handler.finished_signing()
                     self.handler.finished()
                     pin = self.handler.get_auth(outputData)  # does the authenticate dialog and returns pin
                     if not pin:
@@ -593,6 +692,9 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     if pin != 'paired':
                         self.handler.show_message(_("Confirmed. Signing Transaction..."))
                 while inputIndex < len(inputs):
+                    ui_tracker.tick()
+                    if atomic_b.get_value():
+                        raise UserWarning()
                     singleInput = [chipInputs[inputIndex]]
                     self.get_client().startUntrustedTransaction(False, 0,
                                                                 singleInput, redeemScripts[inputIndex],
@@ -601,6 +703,9 @@ class Ledger_KeyStore(Hardware_KeyStore):
                                                                          lockTime=tx.locktime)
                     inputSignature[0] = 0x30  # force for 1.4.9+
                     signatures.append(inputSignature)
+                    if inputIndex == 0:
+                        self.handler.finished()
+                        self.handler.get_signing_ui(atomic_b, ui_tracker)
                     inputIndex = inputIndex + 1
             else:
                 while inputIndex < len(inputs):
@@ -613,6 +718,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     outputData['outputData'] = txOutput
                     if outputData['confirmationNeeded']:
                         outputData['address'] = output
+                        self.handler.finished_signing()
                         self.handler.finished()
                         pin = self.handler.get_auth(outputData)  # does the authenticate dialog and returns pin
                         if not pin:
@@ -620,16 +726,22 @@ class Ledger_KeyStore(Hardware_KeyStore):
                         if pin != 'paired':
                             self.handler.show_message(_("Confirmed. Signing Transaction..."))
                     else:
+                        ui_tracker.tick()
+                        if atomic_b.get_value():
+                            raise UserWarning()
                         # Sign input with the provided PIN
                         inputSignature = self.get_client().untrustedHashSign(inputsPaths[inputIndex], pin,
                                                                              lockTime=tx.locktime)
                         inputSignature[0] = 0x30  # force for 1.4.9+
                         signatures.append(inputSignature)
+                        if inputIndex == 0:
+                            self.handler.finished()
+                            self.handler.get_signing_ui(atomic_b, ui_tracker)
                         inputIndex = inputIndex + 1
                     if pin != 'paired':
                         firstTransaction = False
         except UserWarning:
-            self.handler.show_error(_('Cancelled by user'))
+            self.give_error(_('Cancelled by user'), True)
             return
         except BTChipException as e:
             if e.sw in (0x6985, 0x6d00):  # cancelled by user
@@ -644,6 +756,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
             self.give_error(e, True)
         finally:
             self.handler.finished()
+
+        raise Exception()
 
         for i, txin in enumerate(tx.inputs()):
             signingPos = inputs[i][4]

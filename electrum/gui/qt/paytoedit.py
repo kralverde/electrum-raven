@@ -32,6 +32,7 @@ from electrum import bitcoin
 from electrum.util import bfh
 from electrum.transaction import TxOutput, push_script
 from electrum.bitcoin import opcodes
+from electrum.constants import net
 from electrum.logging import Logger
 
 from .qrtextedit import ScanQRTextEdit
@@ -178,7 +179,10 @@ class PayToEdit(CompletionTextEdit, ScanQRTextEdit, Logger):
                 amount = self.amount_edit.get_amount()
 
             _type, addr = self.payto_address
-            self.outputs = [TxOutput(_type, addr, amount)]
+
+            script = bitcoin.address_to_script(addr)
+
+            self.outputs = [TxOutput(_type, addr, amount, False, '', script)]
 
         return self.outputs[:]
 

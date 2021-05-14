@@ -270,8 +270,9 @@ class Commands:
         return self.network.run_from_another_thread(self.network.getmeta_for_asset(name))
 
     @command('n')
-    def test(self, height):
-        return self.network.run_from_another_thread(self.network.test(height))
+    def test(self, pubkey_hex, type):
+        from .bitcoin import pubkey_to_address
+        return pubkey_to_address(type, pubkey_hex)
 
     @command('')
     def serialize(self, jsontx):

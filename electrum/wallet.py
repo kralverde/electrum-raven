@@ -690,6 +690,7 @@ class Abstract_Wallet(AddressSynchronizer):
     def get_unconfirmed_base_tx_for_batching(self) -> Optional[Transaction]:
         candidate = None
         for tx_hash, tx_mined_status, delta, balance in self.get_history():
+            delta = delta['RVN']
             # tx should not be mined yet
             if tx_mined_status.conf > 0: continue
             # tx should be "outgoing" from wallet
@@ -1110,7 +1111,7 @@ class Abstract_Wallet(AddressSynchronizer):
         info = {}
         xpubs = self.get_master_public_keys()
         for txout in tx.outputs():
-            _type, addr, amount = txout
+            _type, addr, amount, _, _, _ = txout
             if self.is_mine(addr):
                 index = self.get_address_index(addr)
                 pubkeys = self.get_public_keys(addr)
