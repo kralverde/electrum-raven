@@ -56,6 +56,19 @@ else:
     KawpowActivationHeight = 1219736
     nDGWActivationBlock = 338778
 
+def set_constants():
+    global X16Rv2ActivationTS, KawpowActivationTS, KawpowActivationHeight, nDGWActivationBlock
+    if constants.net.TESTNET:
+        X16Rv2ActivationTS = 1567533600
+        KawpowActivationTS = 1585159200
+        KawpowActivationHeight = 231544
+        nDGWActivationBlock = 1
+    else:
+        X16Rv2ActivationTS = 1569945600
+        KawpowActivationTS = 1588788000
+        KawpowActivationHeight = 1219736
+        nDGWActivationBlock = 338778
+
 try:
     import x16r_hash
     import x16rv2_hash
@@ -796,16 +809,6 @@ class Blockchain(Logger):
         except BaseException as e:
             self.logger.info(f'verify_chunk from height {start_height} failed: {repr(e)}')
             return False
-
-    def get_checkpoints(self):
-        # for each chunk, store the hash of the last block and the target after the chunk
-        cp = []
-        n = self.height() // 2016
-        for index in range(n):
-            h = self.get_hash((index + 1) * 2016 - 1)
-            target = self.get_target(index * 2016)
-            cp.append((h, target))
-        return cp
 
 
 def check_header(header: dict) -> Optional[Blockchain]:

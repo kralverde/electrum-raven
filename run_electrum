@@ -26,6 +26,7 @@
 import os
 import sys
 import warnings
+import electrum.blockchain as blockchain
 
 MIN_PYTHON_VERSION = "3.6.1"  # FIXME duplicated from setup.py
 _min_python_version_tuple = tuple(map(int, (MIN_PYTHON_VERSION.split("."))))
@@ -344,13 +345,12 @@ if __name__ == '__main__':
 
     # todo: defer this to gui
     config = SimpleConfig(config_options)
-    
-    #clone_post_fork_headers(config)
-    
+
     cmdname = config.get('cmd')
 
     if config.get('testnet'):
         constants.set_testnet()
+        blockchain.set_constants()  # TODO: FIX ME!!!!!!!!!!!!
     elif config.get('regtest'):
         constants.set_regtest()
     elif config.get('simnet'):
