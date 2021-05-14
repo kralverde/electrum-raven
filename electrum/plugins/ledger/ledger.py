@@ -692,6 +692,9 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     if pin != 'paired':
                         self.handler.show_message(_("Confirmed. Signing Transaction..."))
                 while inputIndex < len(inputs):
+                    if inputIndex == 0:
+                        self.handler.finished()
+                        self.handler.get_signing_ui(atomic_b, ui_tracker)
                     ui_tracker.tick()
                     if atomic_b.get_value():
                         raise UserWarning()
@@ -703,9 +706,6 @@ class Ledger_KeyStore(Hardware_KeyStore):
                                                                          lockTime=tx.locktime)
                     inputSignature[0] = 0x30  # force for 1.4.9+
                     signatures.append(inputSignature)
-                    if inputIndex == 0:
-                        self.handler.finished()
-                        self.handler.get_signing_ui(atomic_b, ui_tracker)
                     inputIndex = inputIndex + 1
             else:
                 while inputIndex < len(inputs):
@@ -726,6 +726,9 @@ class Ledger_KeyStore(Hardware_KeyStore):
                         if pin != 'paired':
                             self.handler.show_message(_("Confirmed. Signing Transaction..."))
                     else:
+                        if inputIndex == 0:
+                            self.handler.finished()
+                            self.handler.get_signing_ui(atomic_b, ui_tracker)
                         ui_tracker.tick()
                         if atomic_b.get_value():
                             raise UserWarning()
@@ -734,9 +737,6 @@ class Ledger_KeyStore(Hardware_KeyStore):
                                                                              lockTime=tx.locktime)
                         inputSignature[0] = 0x30  # force for 1.4.9+
                         signatures.append(inputSignature)
-                        if inputIndex == 0:
-                            self.handler.finished()
-                            self.handler.get_signing_ui(atomic_b, ui_tracker)
                         inputIndex = inputIndex + 1
                     if pin != 'paired':
                         firstTransaction = False

@@ -179,10 +179,5 @@ class Ledger_Handler(QtHandlerBase):
         self.signing_stop_signal.emit()
         return
 
-    def finished(self):
-        if self.dialog is not None:
-            self.dialog.close()
-        super().finished()
-
     def setup_dialog(self):
         self.show_error(_('Initialization of Ledger HW devices is currently disabled.'))
