@@ -31,7 +31,7 @@ os.system(cmd)
 
 os.chdir('electrum')
 
-crowdin_identifier = 'electrum-ravencoin'
+crowdin_identifier = 'electrum'
 crowdin_file_name = 'files[electrum-client/messages.pot]'
 locale_file_name = 'locale/messages.pot'
 
