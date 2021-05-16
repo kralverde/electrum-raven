@@ -6,7 +6,8 @@ dist/
 tmp/
 *.egg/
 Electrum-RVN.egg-info/
-electrum/locale/
+electrum/locale/*
+!electrum/locale/messages.pot
 .devlocaltmp/
 *_trial_temp
 packages
