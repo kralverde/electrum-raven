@@ -46,7 +46,7 @@ from electrum.i18n import _, set_language
 from electrum.plugin import run_hook
 from electrum.base_wizard import GoBack
 from electrum.util import (UserCancelled, profiler,
-                           WalletFileException, BitcoinException, get_new_wallet_name)
+                           WalletFileException, RavencoinException, get_new_wallet_name)
 from electrum.wallet import Wallet, Abstract_Wallet
 from electrum.logging import Logger
 
@@ -240,7 +240,7 @@ class ElectrumGui(Logger):
         if not wallet:
             try:
                 wallet = self._start_wizard_to_select_or_create_wallet(path)
-            except (WalletFileException, BitcoinException) as e:
+            except (WalletFileException, RavencoinException) as e:
                 self.logger.exception('')
                 custom_message_box(icon=QMessageBox.Warning,
                                    parent=None,

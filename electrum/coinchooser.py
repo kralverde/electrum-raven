@@ -27,9 +27,9 @@ from math import floor, log10
 from typing import NamedTuple, List, Callable
 from decimal import Decimal
 
-import electrum.bitcoin as bitcoin
+import electrum.ravencoin as ravencoin
 
-from .bitcoin import sha256, COIN, TYPE_ADDRESS, is_address
+from .ravencoin import sha256, COIN, TYPE_ADDRESS, is_address
 from .transaction import Transaction, TxOutput
 from .util import NotEnoughFunds
 from .logging import Logger
@@ -215,7 +215,7 @@ class CoinChooserBase(Logger):
         # If change is above dust threshold after accounting for the
         # size of the change output, add it to the transaction.
         amounts = [amount for amount in amounts if amount >= dust_threshold]
-        change = [TxOutput(TYPE_ADDRESS, addr, amount, False, '', bitcoin.address_to_script(addr))
+        change = [TxOutput(TYPE_ADDRESS, addr, amount, False, '', ravencoin.address_to_script(addr))
                   for addr, amount in zip(change_addrs, amounts)]
         return change
 

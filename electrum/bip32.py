@@ -5,11 +5,11 @@
 import hashlib
 from typing import List, Tuple, NamedTuple, Union, Iterable
 
-from .util import bfh, bh2u, BitcoinException
+from .util import bfh, bh2u, RavencoinException
 from . import constants
 from . import ecc
 from .crypto import hash_160, hmac_oneshot
-from .bitcoin import rev_hex, int_to_hex, EncodeBase58Check, DecodeBase58Check
+from .ravencoin import rev_hex, int_to_hex, EncodeBase58Check, DecodeBase58Check
 from .logging import get_logger
 
 
@@ -54,7 +54,7 @@ def _CKD_priv(parent_privkey: bytes, parent_chaincode: bytes,
     try:
         keypair = ecc.ECPrivkey(parent_privkey)
     except ecc.InvalidECPointException as e:
-        raise BitcoinException('Impossible xprv (not within curve order)') from e
+        raise RavencoinException('Impossible xprv (not within curve order)') from e
     parent_pubkey = keypair.get_public_key_bytes(compressed=True)
     if is_hardened_child:
         data = bytes([0]) + parent_privkey + child_index
@@ -108,7 +108,7 @@ def xpub_header(xtype: str, *, net=None) -> bytes:
     return net.XPUB_HEADERS[xtype].to_bytes(length=4, byteorder="big")
 
 
-class InvalidMasterKeyVersionBytes(BitcoinException): pass
+class InvalidMasterKeyVersionBytes(RavencoinException): pass
 
 
 class BIP32Node(NamedTuple):
@@ -125,8 +125,8 @@ class BIP32Node(NamedTuple):
             net = constants.net
         xkey = DecodeBase58Check(xkey)
         if len(xkey) != 78:
-            raise BitcoinException('Invalid length for extended key: {}'
-                                   .format(len(xkey)))
+            raise RavencoinException('Invalid length for extended key: {}'
+                                     .format(len(xkey)))
         depth = xkey[4]
         fingerprint = xkey[5:9]
         child_number = xkey[9:13]

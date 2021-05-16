@@ -1,6 +1,6 @@
 from electrum import transaction
 from electrum.transaction import TxOutputForUI, tx_from_str
-from electrum.bitcoin import TYPE_ADDRESS
+from electrum.ravencoin import TYPE_ADDRESS
 from electrum.keystore import xpubkey_to_address
 from electrum.util import bh2u, bfh
 

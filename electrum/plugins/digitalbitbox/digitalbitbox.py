@@ -16,8 +16,8 @@ import sys
 import time
 
 from electrum.crypto import sha256d, EncodeAES_base64, EncodeAES_bytes, DecodeAES_bytes, hmac_oneshot
-from electrum.bitcoin import (TYPE_ADDRESS, push_script, var_int, public_key_to_p2pkh,
-                              is_address)
+from electrum.ravencoin import (TYPE_ADDRESS, push_script, var_int, public_key_to_p2pkh,
+                                is_address)
 from electrum.bip32 import BIP32Node
 from electrum import ecc
 from electrum.ecc import msg_magic
@@ -123,7 +123,7 @@ class DigitalBitbox_Client():
             # only ever returns the mainnet standard type, but it is agnostic
             # to the type when signing.
             if xtype != 'standard' or constants.net.TESTNET:
-                node = BIP32Node.from_xkey(xpub, net=constants.BitcoinMainnet)
+                node = BIP32Node.from_xkey(xpub, net=constants.RavencoinMainnet)
                 xpub = node._replace(xtype=xtype).to_xpub()
             return xpub
         else:

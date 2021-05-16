@@ -17,7 +17,7 @@ cache:
 script:
     - echo "tests skipped (fixme!)"
 after_success:
-    - if [ "$TRAVIS_BRANCH" = "master" ]; then pip install requests && contrib/push_locale; fi
+    - if [ "$TRAVIS_BRANCH" = "master" ]; then pip install requests; fi
     - coveralls
 jobs:
   include:

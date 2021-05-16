@@ -9,7 +9,7 @@ import logging
 
 import electrum
 from electrum.util import format_satoshis
-from electrum.bitcoin import is_address, COIN, TYPE_ADDRESS
+from electrum.ravencoin import is_address, COIN, TYPE_ADDRESS
 from electrum.transaction import TxOutput
 from electrum.wallet import Wallet
 from electrum.storage import WalletStorage

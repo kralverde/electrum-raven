@@ -30,7 +30,7 @@ import traceback
 from functools import partial
 from typing import List, TYPE_CHECKING, Tuple, NamedTuple, Any, Dict, Optional
 
-from . import bitcoin
+from . import ravencoin
 from . import keystore
 from . import mnemonic
 from .bip32 import is_bip32_derivation, xpub_type, normalize_bip32_derivation
@@ -213,16 +213,16 @@ class BaseWizard(Logger):
         if keystore.is_address_list(text):
             self.data['addresses'] = {}
             for addr in text.split():
-                assert bitcoin.is_address(addr)
+                assert ravencoin.is_address(addr)
                 self.data['addresses'][addr] = {}
         elif keystore.is_private_key_list(text):
             self.data['addresses'] = {}
             k = keystore.Imported_KeyStore({})
             keys = keystore.get_private_keys(text)
             for pk in keys:
-                assert bitcoin.is_private_key(pk)
+                assert ravencoin.is_private_key(pk)
                 txin_type, pubkey = k.import_privkey(pk, None)
-                addr = bitcoin.pubkey_to_address(txin_type, pubkey)
+                addr = ravencoin.pubkey_to_address(txin_type, pubkey)
                 self.data['addresses'][addr] = {'type':txin_type, 'pubkey':pubkey, 'redeem_script':None}
             self.keystores.append(k)
         else:

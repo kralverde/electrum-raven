@@ -36,8 +36,8 @@ from typing import Optional, TYPE_CHECKING
 
 from .import util, ecc
 from .util import bfh, bh2u, format_satoshis, json_decode, json_encode, is_hash256_str, is_hex_str, to_bytes
-from . import bitcoin
-from .bitcoin import is_address,  hash_160, COIN, TYPE_ADDRESS
+from . import ravencoin
+from .ravencoin import is_address,  hash_160, COIN, TYPE_ADDRESS
 from .bip32 import BIP32Node
 from .i18n import _
 from .transaction import Transaction, multisig_script, TxOutput
@@ -217,12 +217,12 @@ class Commands:
         """Return the transaction history of any address. Note: This is a
         walletless server query, results are not checked by SPV.
         """
-        sh = bitcoin.address_to_scripthash(address)
+        sh = ravencoin.address_to_scripthash(address)
         return self.network.run_from_another_thread(self.network.get_history_for_scripthash(sh))
 
     @command('n')
     def getaddressscripthash(self, address):
-        return bitcoin.address_to_scripthash(address)
+        return ravencoin.address_to_scripthash(address)
 
     @command('w')
     def listunspent(self):
@@ -239,7 +239,7 @@ class Commands:
         """Returns the UTXO list of any address. Note: This
         is a walletless server query, results are not checked by SPV.
         """
-        sh = bitcoin.address_to_scripthash(address)
+        sh = ravencoin.address_to_scripthash(address)
         return self.network.run_from_another_thread(self.network.listunspent_for_scripthash(sh))
 
     @command('n')
@@ -247,7 +247,7 @@ class Commands:
         """Returns the Asset list of any address. Note: This
         is a walletless server query, results are not checked by SPV.
         """
-        sh = bitcoin.address_to_scripthash(address)
+        sh = ravencoin.address_to_scripthash(address)
         return self.network.run_from_another_thread(self.network.listasset_for_scripthash(sh))
 
     @command('n')
@@ -255,7 +255,7 @@ class Commands:
         """Return the asset balance of any address. Note: This is a walletless
         server query, results are not checked by SPV.
         """
-        sh = bitcoin.address_to_scripthash(address)
+        sh = ravencoin.address_to_scripthash(address)
         out = self.network.run_from_another_thread(self.network.get_asset_balance_for_scripthash(sh))
         for key, value in out["confirmed"].items():
             val = str(Decimal(value) / COIN)
@@ -270,9 +270,8 @@ class Commands:
         return self.network.run_from_another_thread(self.network.getmeta_for_asset(name))
 
     @command('n')
-    def test(self, pubkey_hex, type):
-        from .bitcoin import pubkey_to_address
-        return pubkey_to_address(type, pubkey_hex)
+    def test(self):
+        self.network.run_from_another_thread(self.network.interface.session.send_request('server.peers.subscribe'))
 
     @command('')
     def serialize(self, jsontx):
@@ -291,7 +290,7 @@ class Commands:
                 txin['prevout_hash'] = prevout_hash
             sec = txin.get('privkey')
             if sec:
-                txin_type, privkey, compressed = bitcoin.deserialize_privkey(sec)
+                txin_type, privkey, compressed = ravencoin.deserialize_privkey(sec)
                 pubkey = ecc.ECPrivkey(privkey).get_public_key_hex(compressed=compressed)
                 keypairs[pubkey] = privkey, compressed
                 txin['type'] = txin_type
@@ -309,9 +308,9 @@ class Commands:
         """Sign a transaction. The wallet keys will be used unless a private key is provided."""
         tx = Transaction(tx)
         if privkey:
-            txin_type, privkey2, compressed = bitcoin.deserialize_privkey(privkey)
+            txin_type, privkey2, compressed = ravencoin.deserialize_privkey(privkey)
             pubkey_bytes = ecc.ECPrivkey(privkey2).get_public_key_bytes(compressed=compressed)
-            h160 = bitcoin.hash_160(pubkey_bytes)
+            h160 = ravencoin.hash_160(pubkey_bytes)
             x_pubkey = 'fd' + bh2u(b'\x00' + h160)
             tx.sign({x_pubkey:(privkey2, compressed)})
         else:
@@ -336,7 +335,7 @@ class Commands:
         """Create multisig address"""
         assert isinstance(pubkeys, list), (type(num), type(pubkeys))
         redeem_script = multisig_script(pubkeys, num)
-        address = bitcoin.hash160_to_p2sh(hash_160(bfh(redeem_script)))
+        address = ravencoin.hash160_to_p2sh(hash_160(bfh(redeem_script)))
         return {'address':address, 'redeemScript':redeem_script}
 
     @command('w')
@@ -395,7 +394,7 @@ class Commands:
         """Return the balance of any address. Note: This is a walletless
         server query, results are not checked by SPV.
         """
-        sh = bitcoin.address_to_scripthash(address)
+        sh = ravencoin.address_to_scripthash(address)
         out = self.network.run_from_another_thread(self.network.get_balance_for_scripthash(sh))
         out["confirmed"] =  str(Decimal(out["confirmed"])/COIN)
         out["unconfirmed"] =  str(Decimal(out["unconfirmed"])/COIN)

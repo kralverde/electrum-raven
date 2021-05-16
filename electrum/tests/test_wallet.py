@@ -13,7 +13,7 @@ from electrum.wallet import (Abstract_Wallet, Standard_Wallet, create_new_wallet
                              restore_wallet_from_text, Imported_Wallet)
 from electrum.exchange_rate import ExchangeBase, FxThread
 from electrum.util import TxMinedInfo
-from electrum.bitcoin import COIN
+from electrum.ravencoin import COIN
 from electrum.json_db import JsonDB
 
 from . import SequentialTestCase

@@ -3,7 +3,7 @@ import traceback
 import sys
 
 from electrum.util import bfh, bh2u, versiontuple, UserCancelled, UserFacingException
-from electrum.bitcoin import TYPE_ADDRESS, TYPE_SCRIPT
+from electrum.ravencoin import TYPE_ADDRESS, TYPE_SCRIPT
 from electrum.bip32 import BIP32Node
 from electrum import constants
 from electrum.i18n import _

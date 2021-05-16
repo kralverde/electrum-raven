@@ -3,7 +3,7 @@ import threading
 
 from electrum.scrypt import scrypt_1024_1_1_80 as scryptGetHash
 from electrum.util import bfh,bh2u
-from electrum.bitcoin import rev_hex,int_to_hex
+from electrum.ravencoin import rev_hex,int_to_hex
 from electrum.blockchain import serialize_header
 
 

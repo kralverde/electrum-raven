@@ -6,7 +6,7 @@ import datetime
 
 from electrum import ecc
 from electrum import constants
-from electrum.bitcoin import TYPE_ADDRESS, int_to_hex, var_int, is_segwit_script_type
+from electrum.ravencoin import TYPE_ADDRESS, int_to_hex, var_int, is_segwit_script_type
 from electrum.bip32 import BIP32Node
 from electrum.i18n import _
 from electrum.keystore import Hardware_KeyStore
@@ -185,25 +185,26 @@ class Ledger_Client():
                     self.handler is not None):
                 remaining_attempts = self.dongleObject.getVerifyPinRemainingAttempts()
                 if remaining_attempts != 1:
-                    msg = "Enter your Ledger PIN - remaining attempts : " + str(remaining_attempts)
+                    msg = _("Enter your Ledger PIN - remaining attempts : {}").format(str(remaining_attempts))
                 else:
-                    msg = "Enter your Ledger PIN - WARNING : LAST ATTEMPT. If the PIN is not correct, the dongle will be wiped."
+                    msg = _(
+                        "Enter your Ledger PIN - WARNING : LAST ATTEMPT. If the PIN is not correct, the dongle will be wiped.")
                 confirmed, p, pin = self.password_dialog(msg)
                 if not confirmed:
                     raise UserFacingException(
-                        'Aborted by user - please unplug the dongle and plug it again before retrying')
+                        _('Aborted by user - please unplug the dongle and plug it again before retrying'))
                 pin = pin.encode()
                 self.dongleObject.verifyPin(pin)
                 self.dongleObject.setAlternateCoinVersions(constants.net.ADDRTYPE_P2PKH, constants.net.ADDRTYPE_P2SH)
         except BTChipException as e:
             if (e.sw == 0x6faa):
-                raise UserFacingException("Dongle is temporarily locked - please unplug it and replug it again")
+                raise UserFacingException(_("Dongle is temporarily locked - please unplug it and replug it again"))
             if ((e.sw & 0xFFF0) == 0x63c0):
-                raise UserFacingException("Invalid PIN - please unplug the dongle and plug it again before retrying")
+                raise UserFacingException(_("Invalid PIN - please unplug the dongle and plug it again before retrying"))
             if e.sw == 0x6f00 and e.message == 'Invalid channel':
                 # based on docs 0x6f00 might be a more general error, hence we also compare message to be sure
-                raise UserFacingException("Invalid channel.\n"
-                                          "Please make sure that 'Browser support' is disabled on your device.")
+                raise UserFacingException(_("Invalid channel.\n"
+                                            "Please make sure that 'Browser support' is disabled on your device."))
             raise e
 
     def checkDevice(self):
@@ -228,15 +229,15 @@ class SigningTracker:
         self.total_inputs = total_inputs
         self.ticker = 0
         self.start = time.time()
-        self.last_ETA = 'Calculating...'
+        self.last_ETA = _('Calculating...')
 
     def tick(self):
         self.ticker += 1
 
     def parsed_string(self):
-        line = 'Signing transaction data...\n\n'
+        line = _('Signing transaction data...\n\n')
 
-        line += 'Input: {}/{}\n\n'.format(
+        line += _('Input: {}/{}\n\n').format(
             self.ticker,
             self.total_inputs)
 
@@ -249,9 +250,10 @@ class SigningTracker:
             secs = sec_delta / tx_delta * tx_left
             eta = str(datetime.timedelta(seconds=round(secs)))
 
-        line += 'ETA: {}'.format(eta)
+        line += _('ETA: {}').format(eta)
         self.last_ETA = eta
         return line
+
 
 class ParsingTracker:
     def __init__(self, total_tx):
@@ -270,7 +272,7 @@ class ParsingTracker:
         self.tot_out = 0
 
         self.start_time = time.time()
-        self.last_ETA = 'Computing...'
+        self.last_ETA = _('Computing...')
 
     def set_tx_amt(self, amt):
         self.tot_tx = amt
@@ -300,28 +302,28 @@ class ParsingTracker:
             _logger.info(self.parsed_string())
 
     def parsed_string(self):
-        line = 'Parsing transaction data...\n\n'
+        line = _('Parsing transaction data...\n\n')
         if self.send_warning:
-            line += 'It looks there is a lot of data to parse.\n' \
-                    'This occurs if you receive RVN from transactions\n' \
-                    'with a lot of other outputs such as mining directly\n' \
-                    'to your ledger.\n' \
-                    'These long wait times are due to hardware limitations.\n' \
-                    'You may want to turn off your ledger\'s auto-lock to prevent\n' \
-                    'This transaction from failing due to your ledger locking.\n' \
-                    'These settings can be found in:\n' \
-                    'Settings > Security > Screen Saver > Off\n' \
-                    'Once this transaction is complete and sent, your RVN will\n' \
-                    'be consolidated and transaction parsing times will be\n' \
-                    'unnoticeable in the future.\n\n'
-        line += 'Tx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}\n'.format(
+            line += _('It looks there is a lot of data to parse.\n' \
+                      'This occurs if you receive RVN from transactions\n' \
+                      'with a lot of other outputs such as mining directly\n' \
+                      'to your ledger.\n' \
+                      'These long wait times are due to hardware limitations.\n' \
+                      'You may want to turn off your ledger\'s auto-lock to prevent\n' \
+                      'This transaction from failing due to your ledger locking.\n' \
+                      'These settings can be found in:\n' \
+                      'Settings > Security > Screen Saver > Off\n' \
+                      'Once this transaction is complete and sent, your RVN will\n' \
+                      'be consolidated and transaction parsing times will be\n' \
+                      'unnoticeable in the future.\n\n')
+        line += _('Tx: {}/{}\nInputs: {}/{}\nOutputs: {}/{}\n').format(
             self.tx_count,
             self.tot_tx,
             self.in_count,
             self.tot_in,
             self.out_count,
             self.tot_out)
-        line += 'Total Completion: {}/{}\n'.format(self.ticker, self.total_transactions)
+        line += _('Total Completion: {}/{}\n').format(self.ticker, self.total_transactions)
 
         tx_delta = self.ticker
         sec_delta = time.time() - self.start_time
@@ -332,7 +334,7 @@ class ParsingTracker:
             secs = sec_delta / tx_delta * tx_left
             eta = str(datetime.timedelta(seconds=round(secs)))
 
-        line += 'ETA: {}'.format(eta)
+        line += _('ETA: {}').format(eta)
         self.last_ETA = eta
         return line
 
@@ -507,7 +509,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
     @test_pin_unlocked
     @set_and_unset_signing
     def sign_message(self, sequence, message, password):
-        self.handler.show_error('Signing on ledgers is temporarily disabled')
+        self.handler.show_error(_('Signing on ledgers is temporarily disabled'))
         return b''
 
     @test_pin_unlocked
@@ -533,7 +535,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
         derivations = self.get_tx_derivations(tx)
         for txin in tx.inputs():
             if txin['type'] == 'coinbase':
-                self.give_error("Coinbase not supported")  # should never happen
+                self.give_error(_("Coinbase not supported"))  # should never happen
 
             if txin['type'] in ['p2sh']:
                 p2shTransaction = True
@@ -556,7 +558,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
                     hwAddress = "%s/%d/%d" % (self.get_derivation()[2:], s[0], s[1])
                     break
             else:
-                self.give_error("No matching x_key for sign_transaction")  # should never happen
+                self.give_error(_("No matching x_key for sign_transaction"))  # should never happen
 
             redeemScript = Transaction.get_preimage_script(txin)
             txin_prev_tx = txin.get('prev_tx')
@@ -578,8 +580,8 @@ class Ledger_KeyStore(Hardware_KeyStore):
         if p2shTransaction:
             for txin in tx.inputs():
                 if txin['type'] != 'p2sh':
-                    self.give_error(
-                        "P2SH / regular input mixed in same transaction not supported")  # should never happen
+                    self.give_error(_(
+                        "P2SH / regular input mixed in same transaction not supported"))  # should never happen
 
         txOutput = var_int(len(tx.outputs()))
         for o in tx.outputs():
@@ -596,7 +598,7 @@ class Ledger_KeyStore(Hardware_KeyStore):
         if not p2shTransaction:
             if not self.get_client_electrum().supports_multi_output():
                 if len(tx.outputs()) > 2:
-                    self.give_error("Transaction with more than 2 outputs not supported")
+                    self.give_error(_("Transaction with more than 2 outputs not supported"))
             has_change = False
             any_output_on_change_branch = is_any_tx_output_on_change_branch(tx)
             for o in tx.outputs():

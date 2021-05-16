@@ -30,15 +30,11 @@ LOCALE_DIR = os.path.join(os.path.dirname(__file__), 'locale')
 language = gettext.translation('electrum', LOCALE_DIR, fallback=True)
 
 
-def _(x):
+def _(x: str) -> str:
+    if x == "":
+        return ""  # empty string must not be translated. see #7158
     global language
-    dic = [('Bitcoin', 'Ravencoin'), ('bitcoin', 'ravencoin'), ('比特币', 'ravencoin')]
-    for b, m in dic:
-        x = x.replace(m, b)
-    t = language.gettext(x)
-    for b, m in dic:
-        t = t.replace(b, m)
-    return t
+    return language.gettext(x)
 
 
 def set_language(x):
@@ -46,7 +42,7 @@ def set_language(x):
     if x:
         language = gettext.translation('electrum', LOCALE_DIR, fallback=True, languages=[x])
 
-        
+
 languages = {
     '': _('Default'),
     'ar_SA': _('Arabic'),

@@ -28,16 +28,16 @@ from unicodedata import normalize
 import hashlib
 from typing import Tuple
 
-from . import bitcoin, ecc, constants, bip32
-from .bitcoin import (deserialize_privkey, serialize_privkey,
-                      public_key_to_p2pkh)
+from . import ravencoin, ecc, constants, bip32
+from .ravencoin import (deserialize_privkey, serialize_privkey,
+                        public_key_to_p2pkh)
 from .bip32 import (convert_bip32_path_to_list_of_uint32, BIP32_PRIME,
                     is_xpub, is_xprv, BIP32Node)
 from .ecc import string_to_number, number_to_string
 from .crypto import (pw_decode, pw_encode, sha256, sha256d, PW_HASH_VERSION_LATEST,
                      SUPPORTED_PW_HASH_VERSIONS, UnsupportedPasswordHashVersion)
 from .util import (InvalidPassword, WalletFileException,
-                   BitcoinException, bh2u, bfh, inv_dict)
+                   RavencoinException, bh2u, bfh, inv_dict)
 from .mnemonic import Mnemonic, load_wordlist, seed_type, is_seed
 from .plugin import run_hook
 from .logging import Logger
@@ -197,7 +197,7 @@ class Imported_KeyStore(Software_KeyStore):
             if x_pubkey in self.keypairs.keys():
                 return x_pubkey
         elif x_pubkey[0:2] == 'fd':
-            addr = bitcoin.script_to_address(x_pubkey[2:])
+            addr = ravencoin.script_to_address(x_pubkey[2:])
             if addr in self.addresses:
                 return self.addresses[addr].get('pubkey')
 
@@ -284,12 +284,12 @@ class Xpub:
     def get_xpubkey(self, c, i):
         def encode_path_int(path_int) -> str:
             if path_int < 0xffff:
-                hex = bitcoin.int_to_hex(path_int, 2)
+                hex = ravencoin.int_to_hex(path_int, 2)
             else:
-                hex = 'ffff' + bitcoin.int_to_hex(path_int, 4)
+                hex = 'ffff' + ravencoin.int_to_hex(path_int, 4)
             return hex
         s = ''.join(map(encode_path_int, (c, i)))
-        return 'ff' + bh2u(bitcoin.DecodeBase58Check(self.xpub)) + s
+        return 'ff' + bh2u(ravencoin.DecodeBase58Check(self.xpub)) + s
 
     @classmethod
     def parse_xpubkey(self, pubkey):
@@ -298,7 +298,7 @@ class Xpub:
         pk = bfh(pubkey)
         # xpub:
         pk = pk[1:]
-        xkey = bitcoin.EncodeBase58Check(pk[0:78])
+        xkey = ravencoin.EncodeBase58Check(pk[0:78])
         # derivation:
         dd = pk[78:]
         s = []
@@ -486,7 +486,7 @@ class Old_KeyStore(Deterministic_KeyStore):
         return self.mpk
 
     def get_xpubkey(self, for_change, n):
-        s = ''.join(map(lambda x: bitcoin.int_to_hex(x,2), (for_change, n)))
+        s = ''.join(map(lambda x: ravencoin.int_to_hex(x, 2), (for_change, n)))
         return 'fe' + self.mpk + s
 
     @classmethod
@@ -497,7 +497,7 @@ class Old_KeyStore(Deterministic_KeyStore):
         dd = pk[128:]
         s = []
         while dd:
-            n = int(bitcoin.rev_hex(dd[0:4]), 16)
+            n = int(ravencoin.rev_hex(dd[0:4]), 16)
             dd = dd[4:]
             s.append(n)
         assert len(s) == 2
@@ -694,7 +694,7 @@ def parse_xpubkey(x_pubkey):
 
 def xpubkey_to_address(x_pubkey):
     if x_pubkey[0:2] == 'fd':
-        address = bitcoin.script_to_address(x_pubkey[2:])
+        address = ravencoin.script_to_address(x_pubkey[2:])
         return x_pubkey, address
     if x_pubkey[0:2] in ['02', '03', '04']:
         pubkey = x_pubkey
@@ -705,8 +705,8 @@ def xpubkey_to_address(x_pubkey):
         mpk, s = Old_KeyStore.parse_xpubkey(x_pubkey)
         pubkey = Old_KeyStore.get_pubkey_from_mpk(mpk, s[0], s[1])
     else:
-        raise BitcoinException("Cannot parse pubkey. prefix: {}"
-                               .format(x_pubkey[0:2]))
+        raise RavencoinException("Cannot parse pubkey. prefix: {}"
+                                 .format(x_pubkey[0:2]))
     if pubkey:
         address = public_key_to_p2pkh(bfh(pubkey))
     return pubkey, address
@@ -761,7 +761,7 @@ def is_old_mpk(mpk: str) -> bool:
 
 def is_address_list(text):
     parts = text.split()
-    return bool(parts) and all(bitcoin.is_address(x) for x in parts)
+    return bool(parts) and all(ravencoin.is_address(x) for x in parts)
 
 
 def get_private_keys(text, *, allow_spaces_inside_key=True, raise_on_error=False):
@@ -771,14 +771,14 @@ def get_private_keys(text, *, allow_spaces_inside_key=True, raise_on_error=False
         parts = list(filter(bool, parts))
     else:
         parts = text.split()
-    if bool(parts) and all(bitcoin.is_private_key(x, raise_on_error=raise_on_error) for x in parts):
+    if bool(parts) and all(ravencoin.is_private_key(x, raise_on_error=raise_on_error) for x in parts):
         return parts
 
 def get_private_keys_old(text):
     parts = text.split('\n')
     parts = map(lambda x: ''.join(x.split()), parts)
     parts = list(filter(bool, parts))
-    if bool(parts) and all(bitcoin.is_private_key_old(x) for x in parts):
+    if bool(parts) and all(ravencoin.is_private_key_old(x) for x in parts):
         return parts
 
 def is_private_key_list(text, *, allow_spaces_inside_key=True, raise_on_error=False):
@@ -828,7 +828,7 @@ def from_seed(seed, passphrase, is_p2sh=False):
             xtype = 'p2wsh' if is_p2sh else 'p2wpkh'
         keystore.add_xprv_from_seed(bip32_seed, xtype, der)
     else:
-        raise BitcoinException('Unexpected seed type {}'.format(t))
+        raise RavencoinException('Unexpected seed type {}'.format(t))
     return keystore
 
 def from_private_key_list(text):
@@ -862,5 +862,5 @@ def from_master_key(text):
     elif is_xpub(text):
         k = from_xpub(text)
     else:
-        raise BitcoinException('Invalid master key')
+        raise RavencoinException('Invalid master key')
     return k

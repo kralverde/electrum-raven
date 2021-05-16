@@ -36,7 +36,7 @@ try:
 except ImportError:
     sys.exit("install SimpleWebSocketServer")
 
-from . import bitcoin
+from . import ravencoin
 from .synchronizer import SynchronizerBase
 from .logging import Logger
 
@@ -103,7 +103,7 @@ class BalanceMonitor(SynchronizerBase):
 
     async def _on_address_status(self, addr, status):
         self.logger.info(f'new status for addr {addr}')
-        sh = bitcoin.address_to_scripthash(addr)
+        sh = ravencoin.address_to_scripthash(addr)
         balance = await self.network.get_balance_for_scripthash(sh)
         for ws, amount in self.expected_payments[addr]:
             if not ws.closed:

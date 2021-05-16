@@ -50,7 +50,7 @@ class AbstractNet:
         return max(0, (len(cls.CHECKPOINTS) - 2) * 2016 - 1)
 
 
-class BitcoinMainnet(AbstractNet):
+class RavencoinMainnet(AbstractNet):
 
     TESTNET = False
     WIF_PREFIX = 128
@@ -82,7 +82,7 @@ class BitcoinMainnet(AbstractNet):
     BIP44_COIN_TYPE = 175
 
 
-class BitcoinTestnet(AbstractNet):
+class RavencoinTestnet(AbstractNet):
 
     TESTNET = True
     WIF_PREFIX = 239
@@ -115,39 +115,16 @@ class BitcoinTestnet(AbstractNet):
     BIP44_COIN_TYPE = 175
 
 
-class BitcoinRegtest(BitcoinTestnet):
-
-    SEGWIT_HRP = ""
-    GENESIS = "7543a69d7c2fcdb29a5ebec2fc064c074a35253b6f3072c8a749473aa590a29c"
-    DEFAULT_SERVERS = read_json('servers_regtest.json', {})
-    CHECKPOINTS = []
-
-
-class BitcoinSimnet(BitcoinTestnet):
-
-    SEGWIT_HRP = "sb"
-    GENESIS = "683e86bd5c6d110d91b94b97137ba6bfe02dbbdb8e3dff722a669b5d69d77af6"
-    DEFAULT_SERVERS = read_json('servers_regtest.json', {})
-    CHECKPOINTS = []
-
-
 # don't import net directly, import the module instead (so that net is singleton)
-net = BitcoinMainnet
+net = RavencoinMainnet
 
-def set_simnet():
-    global net
-    net = BitcoinSimnet
 
 def set_mainnet():
     global net
-    net = BitcoinMainnet
+    net = RavencoinMainnet
 
 
 def set_testnet():
     global net
-    net = BitcoinTestnet
+    net = RavencoinTestnet
 
-
-def set_regtest():
-    global net
-    net = BitcoinRegtest

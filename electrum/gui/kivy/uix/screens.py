@@ -19,9 +19,9 @@ from kivy.factory import Factory
 from kivy.utils import platform
 
 from electrum.util import profiler, parse_URI, format_time, InvalidPassword, NotEnoughFunds, Fiat
-from electrum import bitcoin
+from electrum import ravencoin
 from electrum.transaction import TxOutput, Transaction, tx_from_str
-from electrum.util import send_exception_to_crash_reporter, parse_URI, InvalidBitcoinURI
+from electrum.util import send_exception_to_crash_reporter, parse_URI, InvalidRavencoinURI
 from electrum.paymentrequest import PR_UNPAID, PR_PAID, PR_UNKNOWN, PR_EXPIRED
 from electrum.plugin import run_hook
 from electrum.wallet import InternalAddressCorruption
@@ -151,7 +151,7 @@ class HistoryScreen(CScreen):
             ri['amount'] = self.app.format_amount_and_units(value)
             if self.app.fiat_unit:
                 fx = self.app.fx
-                fiat_value = value / Decimal(bitcoin.COIN) * self.app.wallet.price_at_timestamp(tx_hash, fx.timestamp_rate)
+                fiat_value = value / Decimal(ravencoin.COIN) * self.app.wallet.price_at_timestamp(tx_hash, fx.timestamp_rate)
                 fiat_value = Fiat(fiat_value, fx.ccy)
                 ri['quote_text'] = fiat_value.to_ui_string()
         return ri
@@ -176,7 +176,7 @@ class SendScreen(CScreen):
             return
         try:
             uri = parse_URI(text, self.app.on_pr, loop=self.app.asyncio_loop)
-        except InvalidBitcoinURI as e:
+        except InvalidRavencoinURI as e:
             self.app.show_info(_("Error parsing URI") + f":\n{e}")
             return
         amount = uri.get('amount')
@@ -259,17 +259,17 @@ class SendScreen(CScreen):
         else:
             address = str(self.screen.address)
             if not address:
-                self.app.show_error(_('Recipient not specified.') + ' ' + _('Please scan a Bitcoin address or a payment request'))
+                self.app.show_error(_('Recipient not specified.') + ' ' + _('Please scan a Ravencoin address or a payment request'))
                 return
-            if not bitcoin.is_address(address):
-                self.app.show_error(_('Invalid Bitcoin Address') + ':\n' + address)
+            if not ravencoin.is_address(address):
+                self.app.show_error(_('Invalid Ravencoin Address') + ':\n' + address)
                 return
             try:
                 amount = self.app.get_amount(self.screen.amount)
             except:
                 self.app.show_error(_('Invalid amount') + ':\n' + self.screen.amount)
                 return
-            outputs = [TxOutput(bitcoin.TYPE_ADDRESS, address, amount)]
+            outputs = [TxOutput(ravencoin.TYPE_ADDRESS, address, amount)]
         message = self.screen.message
         amount = sum(map(lambda x:x[2], outputs))
         self._do_send(amount, message, outputs, False)
@@ -392,7 +392,7 @@ class ReceiveScreen(CScreen):
 
     def do_share(self):
         uri = self.get_URI()
-        self.app.do_share(uri, _("Share Bitcoin Request"))
+        self.app.do_share(uri, _("Share Ravencoin Request"))
 
     def do_copy(self):
         uri = self.get_URI()

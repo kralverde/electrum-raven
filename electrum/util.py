@@ -125,7 +125,7 @@ class FileExportFailed(Exception):
 class WalletFileException(Exception): pass
 
 
-class BitcoinException(Exception): pass
+class RavencoinException(Exception): pass
 
 
 class UserFacingException(Exception):
@@ -726,25 +726,25 @@ def block_explorer_URL(config: 'SimpleConfig', kind: str, item: str) -> Optional
 #_ud = re.compile('%([0-9a-hA-H]{2})', re.MULTILINE)
 #urldecode = lambda x: _ud.sub(lambda m: chr(int(m.group(1), 16)), x)
 
-class InvalidBitcoinURI(Exception): pass
+class InvalidRavencoinURI(Exception): pass
 
 
 def parse_URI(uri: str, on_pr: Callable = None, *, loop=None) -> dict:
     """Raises InvalidBitcoinURI on malformed URI."""
-    from . import bitcoin
-    from .bitcoin import COIN
+    from . import ravencoin
+    from .ravencoin import COIN
 
     if not isinstance(uri, str):
-        raise InvalidBitcoinURI(f"expected string, not {repr(uri)}")
+        raise InvalidRavencoinURI(f"expected string, not {repr(uri)}")
 
     if ':' not in uri:
-        if not bitcoin.is_address(uri):
-            raise InvalidBitcoinURI("Not a Ravencoin address")
+        if not ravencoin.is_address(uri):
+            raise InvalidRavencoinURI("Not a Ravencoin address")
         return {'address': uri}
 
     u = urllib.parse.urlparse(uri)
     if u.scheme != 'raven':
-        raise InvalidBitcoinURI("Not a Ravencoin URI")
+        raise InvalidRavencoinURI("Not a Ravencoin URI")
     address = u.path
 
     # python for android fails to parse query
@@ -756,12 +756,12 @@ def parse_URI(uri: str, on_pr: Callable = None, *, loop=None) -> dict:
 
     for k, v in pq.items():
         if len(v) != 1:
-            raise InvalidBitcoinURI(f'Duplicate Key: {repr(k)}')
+            raise InvalidRavencoinURI(f'Duplicate Key: {repr(k)}')
 
     out = {k: v[0] for k, v in pq.items()}
     if address:
-        if not bitcoin.is_address(address):
-            raise InvalidBitcoinURI(f"Invalid Ravencoin address: {address}")
+        if not ravencoin.is_address(address):
+            raise InvalidRavencoinURI(f"Invalid Ravencoin address: {address}")
         out['address'] = address
     if 'amount' in out:
         am = out['amount']
@@ -774,7 +774,7 @@ def parse_URI(uri: str, on_pr: Callable = None, *, loop=None) -> dict:
                 amount = Decimal(am) * COIN
             out['amount'] = int(amount)
         except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'amount' field: {repr(e)}") from e
+            raise InvalidRavencoinURI(f"failed to parse 'amount' field: {repr(e)}") from e
     if 'message' in out:
         out['message'] = out['message']
         out['memo'] = out['message']
@@ -782,17 +782,17 @@ def parse_URI(uri: str, on_pr: Callable = None, *, loop=None) -> dict:
         try:
             out['time'] = int(out['time'])
         except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'time' field: {repr(e)}") from e
+            raise InvalidRavencoinURI(f"failed to parse 'time' field: {repr(e)}") from e
     if 'exp' in out:
         try:
             out['exp'] = int(out['exp'])
         except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'exp' field: {repr(e)}") from e
+            raise InvalidRavencoinURI(f"failed to parse 'exp' field: {repr(e)}") from e
     if 'sig' in out:
         try:
-            out['sig'] = bh2u(bitcoin.base_decode(out['sig'], None, base=58))
+            out['sig'] = bh2u(ravencoin.base_decode(out['sig'], None, base=58))
         except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'sig' field: {repr(e)}") from e
+            raise InvalidRavencoinURI(f"failed to parse 'sig' field: {repr(e)}") from e
 
     r = out.get('r')
     sig = out.get('sig')
@@ -816,8 +816,8 @@ def parse_URI(uri: str, on_pr: Callable = None, *, loop=None) -> dict:
 
 def create_bip21_uri(addr, amount_sat: Optional[int], message: Optional[str],
                      *, extra_query_params: Optional[dict] = None) -> str:
-    from . import bitcoin
-    if not bitcoin.is_address(addr):
+    from . import ravencoin
+    if not ravencoin.is_address(addr):
         return ""
     if extra_query_params is None:
         extra_query_params = {}

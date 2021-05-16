@@ -37,7 +37,7 @@ from PyQt5.QtWidgets import (QDialog, QLabel, QPushButton, QHBoxLayout, QVBoxLay
 import qrcode
 from qrcode import exceptions
 
-from electrum.bitcoin import base_encode
+from electrum.ravencoin import base_encode
 from electrum.i18n import _
 from electrum.plugin import run_hook
 from electrum import simple_config

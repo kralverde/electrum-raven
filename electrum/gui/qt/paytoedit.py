@@ -28,10 +28,10 @@ from decimal import Decimal
 
 from PyQt5.QtGui import QFontMetrics
 
-from electrum import bitcoin
+from electrum import ravencoin
 from electrum.util import bfh
 from electrum.transaction import TxOutput, push_script
-from electrum.bitcoin import opcodes
+from electrum.ravencoin import opcodes
 from electrum.constants import net
 from electrum.logging import Logger
 
@@ -89,10 +89,10 @@ class PayToEdit(CompletionTextEdit, ScanQRTextEdit, Logger):
     def parse_output(self, x):
         try:
             address = self.parse_address(x)
-            return bitcoin.TYPE_ADDRESS, address
+            return ravencoin.TYPE_ADDRESS, address
         except:
             script = self.parse_script(x)
-            return bitcoin.TYPE_SCRIPT, script
+            return ravencoin.TYPE_SCRIPT, script
 
     def parse_script(self, x):
         script = ''
@@ -100,7 +100,7 @@ class PayToEdit(CompletionTextEdit, ScanQRTextEdit, Logger):
             if word[0:3] == 'OP_':
                 opcode_int = opcodes[word]
                 assert opcode_int < 256  # opcode is single-byte
-                script += bitcoin.int_to_hex(opcode_int)
+                script += ravencoin.int_to_hex(opcode_int)
             else:
                 bfh(word)  # to test it is hex data
                 script += push_script(word)
@@ -116,7 +116,7 @@ class PayToEdit(CompletionTextEdit, ScanQRTextEdit, Logger):
         r = line.strip()
         m = re.match('^'+RE_ALIAS+'$', r)
         address = str(m.group(2) if m else r)
-        assert bitcoin.is_address(address)
+        assert ravencoin.is_address(address)
         return address
 
     def check_text(self):
@@ -180,7 +180,7 @@ class PayToEdit(CompletionTextEdit, ScanQRTextEdit, Logger):
 
             _type, addr = self.payto_address
 
-            script = bitcoin.address_to_script(addr)
+            script = ravencoin.address_to_script(addr)
 
             self.outputs = [TxOutput(_type, addr, amount, False, '', script)]
 
@@ -227,7 +227,7 @@ class PayToEdit(CompletionTextEdit, ScanQRTextEdit, Logger):
         if not (('.' in key) and (not '<' in key) and (not ' ' in key)):
             return
         parts = key.split(sep=',')  # assuming single line
-        if parts and len(parts) > 0 and bitcoin.is_address(parts[0]):
+        if parts and len(parts) > 0 and ravencoin.is_address(parts[0]):
             return
         try:
             data = self.win.contacts.resolve(key)

@@ -46,10 +46,10 @@ from .util import (log_exceptions, ignore_exceptions,
                    bfh, SilentTaskGroup, make_aiohttp_session, send_exception_to_crash_reporter,
                    is_hash256_str, is_non_negative_integer)
 
-from .bitcoin import COIN
+from .ravencoin import COIN
 from . import constants
 from . import blockchain
-from . import bitcoin
+from . import ravencoin
 from .blockchain import Blockchain, HEADER_SIZE, nDGWActivationBlock
 from .interface import (Interface, serialize_server, deserialize_server,
                         RequestTimedOut, NetworkTimeout, BUCKET_NAME_OF_ONION_SERVERS)
@@ -387,7 +387,7 @@ class Network(Logger):
             self.notify('banner')
         async def get_donation_address():
             addr = await session.send_request('server.donation_address')
-            if not bitcoin.is_address(addr):
+            if not ravencoin.is_address(addr):
                 if addr:  # ignore empty string
                     self.logger.info(f"invalid donation address from server: {repr(addr)}")
                 addr = ''

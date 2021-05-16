@@ -39,10 +39,10 @@ try:
 except ImportError:
     sys.exit("Error: could not find paymentrequest_pb2.py. Create it with 'protoc --proto_path=electrum/ --python_out=electrum/ electrum/paymentrequest.proto'")
 
-from . import bitcoin, ecc, util, transaction, x509, rsakey
+from . import ravencoin, ecc, util, transaction, x509, rsakey
 from .util import bh2u, bfh, export_meta, import_meta, make_aiohttp_session
 from .crypto import sha256
-from .bitcoin import TYPE_ADDRESS
+from .ravencoin import TYPE_ADDRESS
 from .transaction import TxOutput
 from .network import Network
 from .logging import get_logger, Logger
@@ -363,7 +363,7 @@ def sign_request_with_alias(pr, alias, alias_privkey):
     pr.pki_data = str(alias)
     message = pr.SerializeToString()
     ec_key = ecc.ECPrivkey(alias_privkey)
-    compressed = bitcoin.is_compressed_privkey(alias_privkey)
+    compressed = ravencoin.is_compressed_privkey(alias_privkey)
     pr.signature = ec_key.sign_message(message, compressed)
 
 

@@ -8,7 +8,7 @@ from decimal import Decimal
 import threading
 import asyncio
 
-from electrum.bitcoin import TYPE_ADDRESS
+from electrum.ravencoin import TYPE_ADDRESS
 from electrum.storage import WalletStorage
 from electrum.wallet import Wallet, InternalAddressCorruption
 from electrum.paymentrequest import InvoiceStore
@@ -345,7 +345,7 @@ class ElectrumWindow(App):
             self.send_screen.do_clear()
 
     def on_qr(self, data):
-        from electrum.bitcoin import base_decode, is_address
+        from electrum.ravencoin import base_decode, is_address
         data = data.strip()
         if is_address(data):
             self.set_URI(data)

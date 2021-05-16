@@ -30,7 +30,7 @@ from typing import Optional, Dict, Mapping, Sequence
 from . import constants
 from . import util
 from .crypto import sha256d
-from .bitcoin import hash_encode, int_to_hex, rev_hex
+from .ravencoin import hash_encode, int_to_hex, rev_hex
 from .logging import get_logger, Logger
 from .simple_config import SimpleConfig
 from .util import bfh, bh2u

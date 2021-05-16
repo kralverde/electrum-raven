@@ -5,7 +5,7 @@ import logging
 
 from electrum import WalletStorage, Wallet
 from electrum.util import format_satoshis
-from electrum.bitcoin import is_address, COIN, TYPE_ADDRESS
+from electrum.ravencoin import is_address, COIN, TYPE_ADDRESS
 from electrum.transaction import TxOutput
 from electrum.network import TxBroadcastError, BestEffortRequestFailed
 from electrum.logging import console_stderr_handler
@@ -170,7 +170,7 @@ class ElectrumGui:
 
     def do_send(self):
         if not is_address(self.str_recipient):
-            print(_('Invalid Bitcoin address'))
+            print(_('Invalid Ravencoin address'))
             return
         try:
             amount = int(Decimal(self.str_amount) * COIN)

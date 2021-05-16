@@ -39,11 +39,11 @@ class Abstract_Ledger_UI(WindowModalDialog):
         # Thread interrupter. If we cancel, set true
         self.atomic_b = atomic_b
         self.label = QLabel('')
-        self.label.setText("Generating Information...")
+        self.label.setText(_("Generating Information..."))
         layout = QVBoxLayout(self)
         layout.addWidget(self.label)
 
-        self.cancel = QPushButton('Cancel')
+        self.cancel = QPushButton(_('Cancel'))
 
         def end():
             self.finished()
@@ -71,7 +71,7 @@ class Abstract_Ledger_UI(WindowModalDialog):
 
 class Parsing_UI(Abstract_Ledger_UI):
     def __init__(self, parse_data, atomic_b, parent=None):
-        super().__init__(atomic_b, parent, 'Parsing Transaction...')
+        super().__init__(atomic_b, parent, _('Parsing Transaction...'))
         self.parse_data = parse_data
 
     def update_text(self):
@@ -79,7 +79,7 @@ class Parsing_UI(Abstract_Ledger_UI):
 
 class Signing_UI(Abstract_Ledger_UI):
     def __init__(self, parse_data, atomic_b, parent=None):
-        super().__init__(atomic_b, parent, 'Signing Transaction...')
+        super().__init__(atomic_b, parent, _('Signing Transaction...'))
         self.parse_data = parse_data
 
     def update_text(self):
@@ -104,7 +104,7 @@ class Ledger_Handler(QtHandlerBase):
         self.signing_stop_signal.connect(self.stop_signing_dialog)
 
     def word_dialog(self, msg):
-        response = QInputDialog.getText(self.top_level_window(), "Ledger Wallet Authentication", msg,
+        response = QInputDialog.getText(self.top_level_window(), _("Ledger Wallet Authentication"), msg,
                                         QLineEdit.Password)
         if not response[1]:
             self.word = None

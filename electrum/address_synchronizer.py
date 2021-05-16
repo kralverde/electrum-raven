@@ -27,8 +27,8 @@ import itertools
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
-from . import bitcoin
-from .bitcoin import COINBASE_MATURITY, TYPE_ADDRESS, TYPE_PUBKEY
+from . import ravencoin
+from .ravencoin import COINBASE_MATURITY, TYPE_ADDRESS, TYPE_PUBKEY
 from .util import profiler, bfh, TxMinedInfo
 from .transaction import Transaction, TxOutput
 from .synchronizer import Synchronizer
@@ -133,7 +133,7 @@ class AddressSynchronizer(Logger):
         if txo.type == TYPE_ADDRESS:
             addr = txo.address
         elif txo.type == TYPE_PUBKEY:
-            addr = bitcoin.public_key_to_p2pkh(bfh(txo.address))
+            addr = ravencoin.public_key_to_p2pkh(bfh(txo.address))
         else:
             addr = None
         return addr

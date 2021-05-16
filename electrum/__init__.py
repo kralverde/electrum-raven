@@ -6,7 +6,7 @@ from .coinchooser import COIN_CHOOSERS
 from .network import Network, pick_random_server
 from .interface import Interface
 from .simple_config import SimpleConfig, get_config, set_config
-from . import bitcoin
+from . import ravencoin
 from . import transaction
 from . import daemon
 from .transaction import Transaction

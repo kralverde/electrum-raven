@@ -33,7 +33,7 @@ from aiorpcx import TaskGroup, run_in_thread, RPCError
 
 from .transaction import Transaction
 from .util import bh2u, make_aiohttp_session, NetworkJobOnDefaultServer
-from .bitcoin import address_to_scripthash, is_address
+from .ravencoin import address_to_scripthash, is_address
 from .network import UntrustedServerReturnedError
 from .logging import Logger
 from .interface import GracefulDisconnect

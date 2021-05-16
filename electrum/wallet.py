@@ -44,17 +44,17 @@ from typing import TYPE_CHECKING, List, Optional, Tuple, Union, NamedTuple, Sequ
 from .i18n import _
 from .util import (NotEnoughFunds, UserCancelled, profiler,
                    format_satoshis, format_fee_satoshis, NoDynamicFeeEstimates,
-                   WalletFileException, BitcoinException,
+                   WalletFileException, RavencoinException,
                    InvalidPassword, format_time, timestamp_to_datetime, Satoshis,
                    Fiat, bfh, bh2u, TxMinedInfo, quantize_feerate)
-from .bitcoin import (COIN, TYPE_ADDRESS, is_address, address_to_script,
-                      is_minikey, relayfee, dust_threshold)
+from .ravencoin import (COIN, TYPE_ADDRESS, is_address, address_to_script,
+                        is_minikey, relayfee, dust_threshold)
 from .crypto import sha256d
 from . import keystore
 from .keystore import load_keystore, Hardware_KeyStore
 from .util import multisig_type
 from .storage import STO_EV_PLAINTEXT, STO_EV_USER_PW, STO_EV_XPUB_PW, WalletStorage
-from . import transaction, bitcoin, coinchooser, paymentrequest, ecc, bip32
+from . import transaction, ravencoin, coinchooser, paymentrequest, ecc, bip32
 from .transaction import Transaction, TxOutput, TxOutputHwInfo
 from .plugin import run_hook
 from .address_synchronizer import (AddressSynchronizer, TX_HEIGHT_LOCAL,
@@ -84,11 +84,11 @@ TX_STATUS = [
 
 def append_utxos_to_inputs(inputs, network: 'Network', pubkey, txin_type, imax):
     if txin_type != 'p2pk':
-        address = bitcoin.pubkey_to_address(txin_type, pubkey)
-        scripthash = bitcoin.address_to_scripthash(address)
+        address = ravencoin.pubkey_to_address(txin_type, pubkey)
+        scripthash = ravencoin.address_to_scripthash(address)
     else:
-        script = bitcoin.public_key_to_p2pk_script(pubkey)
-        scripthash = bitcoin.script_to_scripthash(script)
+        script = ravencoin.public_key_to_p2pk_script(pubkey)
+        scripthash = ravencoin.script_to_scripthash(script)
         address = '(pubkey)'
 
     u = network.run_from_another_thread(network.listunspent_for_scripthash(scripthash))
@@ -114,7 +114,7 @@ def sweep_preparations(privkeys, network: 'Network', imax=100):
     inputs = []
     keypairs = {}
     for sec in privkeys:
-        txin_type, privkey, compressed = bitcoin.deserialize_privkey(sec)
+        txin_type, privkey, compressed = ravencoin.deserialize_privkey(sec)
         find_utxos_for_privkey(txin_type, privkey, compressed)
         # do other lookups to increase support coverage
         if is_minikey(sec):
@@ -270,9 +270,9 @@ class Abstract_Wallet(AddressSynchronizer):
         addrs = self.get_receiving_addresses()
         if len(addrs) > 0:
             addr = str(addrs[0])
-            if not bitcoin.is_address(addr):
+            if not ravencoin.is_address(addr):
                 neutered_addr = addr[:5] + '..' + addr[-2:]
-                raise WalletFileException(f'The addresses in this wallet are not bitcoin addresses.\n'
+                raise WalletFileException(f'The addresses in this wallet are not ravencoin addresses.\n'
                                           f'e.g. {neutered_addr} (length: {len(addr)})')
 
     def calc_unused_change_addresses(self):
@@ -369,7 +369,7 @@ class Abstract_Wallet(AddressSynchronizer):
         pk, compressed = self.keystore.get_private_key(index, password)
         txin_type = self.get_txin_type(address)
         redeem_script = self.get_redeem_script(address)
-        serialized_privkey = bitcoin.serialize_privkey(pk, compressed, txin_type)
+        serialized_privkey = ravencoin.serialize_privkey(pk, compressed, txin_type)
         return serialized_privkey, redeem_script
 
     def get_public_keys(self, address):
@@ -1278,7 +1278,7 @@ class Abstract_Wallet(AddressSynchronizer):
 
     def add_payment_request(self, req, config):
         addr = req['address']
-        if not bitcoin.is_address(addr):
+        if not ravencoin.is_address(addr):
             raise Exception(_('Invalid Bitcoin address.'))
         if not self.is_mine(addr):
             raise Exception(_('Address not in wallet.'))
@@ -1564,7 +1564,7 @@ class Imported_Wallet(Simple_Wallet):
         good_addr = []  # type: List[str]
         bad_addr = []  # type: List[Tuple[str, str]]
         for address in addresses:
-            if not bitcoin.is_address(address):
+            if not ravencoin.is_address(address):
                 bad_addr.append((address, _('invalid address')))
                 continue
             if self.db.has_imported_address(address):
@@ -1582,7 +1582,7 @@ class Imported_Wallet(Simple_Wallet):
         if good_addr and good_addr[0] == address:
             return address
         else:
-            raise BitcoinException(str(bad_addr[0][1]))
+            raise RavencoinException(str(bad_addr[0][1]))
 
     def delete_address(self, address):
         if not self.db.has_imported_address(address):
@@ -1613,9 +1613,9 @@ class Imported_Wallet(Simple_Wallet):
         self.db.remove_imported_address(address)
         if pubkey:
             # delete key iff no other address uses it (e.g. p2pkh and p2wpkh for same key)
-            for txin_type in bitcoin.WIF_SCRIPT_TYPES.keys():
+            for txin_type in ravencoin.WIF_SCRIPT_TYPES.keys():
                 try:
-                    addr2 = bitcoin.pubkey_to_address(txin_type, pubkey)
+                    addr2 = ravencoin.pubkey_to_address(txin_type, pubkey)
                 except NotImplementedError:
                     pass
                 else:
@@ -1650,7 +1650,7 @@ class Imported_Wallet(Simple_Wallet):
             if txin_type not in ('p2pkh', 'p2wpkh', 'p2wpkh-p2sh'):
                 bad_keys.append((key, _('not implemented type') + f': {txin_type}'))
                 continue
-            addr = bitcoin.pubkey_to_address(txin_type, pubkey)
+            addr = ravencoin.pubkey_to_address(txin_type, pubkey)
             good_addr.append(addr)
             self.db.add_imported_address(addr, {'type':txin_type, 'pubkey':pubkey, 'redeem_script':None})
             self.add_address(addr)
@@ -1664,7 +1664,7 @@ class Imported_Wallet(Simple_Wallet):
         if good_addr:
             return good_addr[0]
         else:
-            raise BitcoinException(str(bad_keys[0][1]))
+            raise RavencoinException(str(bad_keys[0][1]))
 
     def get_redeem_script(self, address):
         d = self.db.get_imported_address(address)
@@ -1886,7 +1886,7 @@ class Standard_Wallet(Simple_Deterministic_Wallet):
     wallet_type = 'standard'
 
     def pubkeys_to_address(self, pubkey):
-        return bitcoin.pubkey_to_address(self.txin_type, pubkey)
+        return ravencoin.pubkey_to_address(self.txin_type, pubkey)
 
 
 class Multisig_Wallet(Deterministic_Wallet):
@@ -1907,7 +1907,7 @@ class Multisig_Wallet(Deterministic_Wallet):
 
     def pubkeys_to_address(self, pubkeys):
         redeem_script = self.pubkeys_to_redeem_script(pubkeys)
-        return bitcoin.redeem_script_to_address(self.txin_type, redeem_script)
+        return ravencoin.redeem_script_to_address(self.txin_type, redeem_script)
 
     def pubkeys_to_redeem_script(self, pubkeys):
         return transaction.multisig_script(sorted(pubkeys), self.m)

@@ -48,9 +48,9 @@ from PyQt5.QtWidgets import (QMessageBox, QComboBox, QSystemTrayIcon, QTabWidget
                              QWidget, QMenu, QSizePolicy, QStatusBar)
 
 import electrum
-from electrum import (keystore, simple_config, ecc, constants, util, bitcoin, commands,
+from electrum import (keystore, simple_config, ecc, constants, util, ravencoin, commands,
                       coinchooser, paymentrequest)
-from electrum.bitcoin import COIN, is_address, TYPE_ADDRESS
+from electrum.ravencoin import COIN, is_address, TYPE_ADDRESS
 from electrum.plugin import run_hook
 from electrum.i18n import _
 from electrum.util import (format_time, format_satoshis, format_fee_satoshis,
@@ -61,7 +61,7 @@ from electrum.util import (format_time, format_satoshis, format_fee_satoshis,
                            decimal_point_to_base_unit_name, quantize_feerate,
                            UnknownBaseUnit, DECIMAL_POINT_DEFAULT, UserFacingException,
                            get_new_wallet_name, send_exception_to_crash_reporter,
-                           InvalidBitcoinURI)
+                           InvalidRavencoinURI)
 from electrum.transaction import Transaction, TxOutput
 from electrum.address_synchronizer import AddTransactionException
 from electrum.wallet import (Multisig_Wallet, CannotBumpFee, Abstract_Wallet,
@@ -470,8 +470,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         if self.wallet.is_watching_only():
             msg = ' '.join([
                 _("This wallet is watching-only."),
-                _("This means you will not be able to spend Bitcoins with it."),
-                _("Make sure you own the seed phrase or the private keys, before you request Bitcoins to be sent to this wallet.")
+                _("This means you will not be able to spend Ravencoin with it."),
+                _("Make sure you own the seed phrase or the private keys, before you request Ravencoin to be sent to this wallet.")
             ])
             self.show_warning(msg, title=_('Watch-only wallet'))
 
@@ -488,7 +488,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         msg = ''.join([
             _("You are in testnet mode."), ' ',
             _("Testnet coins are worthless."), '\n',
-            _("Testnet is separate from the main Bitcoin network. It is used for testing.")
+            _("Testnet is separate from the main Ravencoin network. It is used for testing.")
         ])
         cb = QCheckBox(_("Don't show this again."))
         cb_checked = False
@@ -664,11 +664,11 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def show_about(self):
         QMessageBox.about(self, "Electrum-rvn",
                           (_("Version")+" %s" % ELECTRUM_VERSION + "\n\n" +
-                           _("Electrum's focus is speed, with low resource usage and simplifying Bitcoin.") + " " +
+                           _("Electrum's focus is speed, with low resource usage and simplifying Ravencoin.") + " " +
                            _("You do not need to perform regular backups, because your wallet can be "
                               "recovered from a secret phrase that you can memorize or write on paper.") + " " +
                            _("Startup times are instant because it operates in conjunction with high-performance "
-                              "servers that handle the most complicated parts of the Bitcoin system.") + "\n\n" +
+                              "servers that handle the most complicated parts of the Ravencoin system.") + "\n\n" +
                            _("Uses icons from the Icons8 icon pack (icons8.com).")))
 
     def show_update_check(self, version=None):
@@ -934,7 +934,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.receive_address_e = ButtonsLineEdit()
         self.receive_address_e.addCopyButton(self.app)
         self.receive_address_e.setReadOnly(True)
-        msg = _('Bitcoin address where the payment should be received. Note that each payment request uses a different Bitcoin address.')
+        msg = _('Ravencoin address where the payment should be received. Note that each payment request uses a different Ravencoin address.')
         self.receive_address_label = HelpLabel(_('Receiving address'), msg)
         self.receive_address_e.textChanged.connect(self.update_receive_qr)
         self.receive_address_e.textChanged.connect(self.update_receive_address_styling)
@@ -965,8 +965,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         msg = ' '.join([
             _('Expiration date of your request.'),
             _('This information is seen by the recipient if you send them a signed payment request.'),
-            _('Expired requests have to be deleted manually from your list, in order to free the corresponding Bitcoin addresses.'),
-            _('The bitcoin address never expires and will always be part of this electrum wallet.'),
+            _('Expired requests have to be deleted manually from your list, in order to free the corresponding Ravencoin addresses.'),
+            _('The ravencoin address never expires and will always be part of this electrum wallet.'),
         ])
         grid.addWidget(HelpLabel(_('Request expires'), msg), 3, 0)
         grid.addWidget(self.expires_combo, 3, 1)
@@ -1035,7 +1035,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             extra_query_params['exp'] = str(int(req.get('exp')))
         if req.get('name') and req.get('sig'):
             sig = bfh(req.get('sig'))
-            sig = bitcoin.base_encode(sig, base=58)
+            sig = ravencoin.base_encode(sig, base=58)
             extra_query_params['name'] = req['name']
             extra_query_params['sig'] = sig
         uri = util.create_bip21_uri(addr, amount, message, extra_query_params=extra_query_params)
@@ -1168,7 +1168,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.tabs.setCurrentIndex(self.tabs.indexOf(self.receive_tab))
 
     def receive_at(self, addr):
-        if not bitcoin.is_address(addr):
+        if not ravencoin.is_address(addr):
             return
         self.show_receive_tab()
         self.receive_address_e.setText(addr)
@@ -1209,7 +1209,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.amount_e = BTCAmountEdit(self.get_decimal_point)
         self.payto_e = PayToEdit(self)
         msg = _('Recipient of the funds.') + '\n\n'\
-              + _('You may enter a Bitcoin address, a label from your list of contacts (a list of completions will be proposed), or an alias (email-like address that forwards to a Bitcoin address)')
+              + _('You may enter a Ravencoin address, a label from your list of contacts (a list of completions will be proposed), or an alias (email-like address that forwards to a Ravencoin address)')
         payto_label = HelpLabel(_('Pay to'), msg)
         grid.addWidget(payto_label, 1, 0)
         grid.addWidget(self.payto_e, 1, 1, 1, -1)
@@ -1255,7 +1255,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         hbox.addStretch(1)
         grid.addLayout(hbox, 4, 4)
 
-        msg = _('Bitcoin transactions are in general not free. A transaction fee is paid by the sender of the funds.') + '\n\n'\
+        msg = _('Ravencoin transactions are in general not free. A transaction fee is paid by the sender of the funds.') + '\n\n'\
               + _('The amount of fee can be decided freely by the sender. However, transactions with low fees take more time to be processed.') + '\n\n'\
               + _('A suggested fee is automatically added to this field. You may override it. The suggested fee increases with the size of the transaction.')
         self.fee_e_label = HelpLabel(_('Fee'), msg)
@@ -1467,7 +1467,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         outputs, fee_estimator, tx_desc, coins = self.read_send_tab()
         if not outputs:
             _type, addr = self.get_payto_or_dummy()
-            script = bitcoin.address_to_script(addr)
+            script = ravencoin.address_to_script(addr)
             outputs = [TxOutput(_type, addr, amount, False, '', script)]
         is_sweep = bool(self.tx_external_keypairs)
         make_tx = lambda fee_est: \
@@ -1660,10 +1660,10 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         for o in outputs:
             if o.address is None:
-                self.show_error(_('Bitcoin Address is None'))
+                self.show_error(_('Ravencoin Address is None'))
                 return True
-            if o.type == TYPE_ADDRESS and not bitcoin.is_address(o.address):
-                self.show_error(_('Invalid Bitcoin Address'))
+            if o.type == TYPE_ADDRESS and not ravencoin.is_address(o.address):
+                self.show_error(_('Invalid Ravencoin Address'))
                 return True
             if o.value is None:
                 self.show_error(_('Invalid Amount'))
@@ -1895,7 +1895,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             return
         try:
             out = util.parse_URI(URI, self.on_pr)
-        except InvalidBitcoinURI as e:
+        except InvalidRavencoinURI as e:
             self.show_error(_("Error parsing URI") + f":\n{e}")
             return
         self.show_send_tab()
@@ -2121,7 +2121,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             'electrum': electrum,
             'daemon': self.gui_object.daemon,
             'util': util,
-            'bitcoin': bitcoin,
+            'ravencoin': ravencoin,
         })
 
         c = commands.Commands(self.config, self.wallet, self.network, lambda: self.console.set_json(True))
@@ -2356,7 +2356,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.logger.exception('')
             self.show_message(str(e))
             return
-        xtype = bitcoin.deserialize_privkey(pk)[0]
+        xtype = ravencoin.deserialize_privkey(pk)[0]
         d = WindowModalDialog(self, _("Private key"))
         d.setMinimumSize(600, 150)
         vbox = QVBoxLayout()
@@ -2385,8 +2385,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def do_sign(self, address, message, signature, password):
         address  = address.text().strip()
         message = message.toPlainText().strip()
-        if not bitcoin.is_address(address):
-            self.show_message(_('Invalid Bitcoin address.'))
+        if not ravencoin.is_address(address):
+            self.show_message(_('Invalid Ravencoin address.'))
             return
         if self.wallet.is_watching_only():
             self.show_message(_('This is a watching-only wallet.'))
@@ -2413,8 +2413,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def do_verify(self, address, message, signature):
         address  = address.text().strip()
         message = message.toPlainText().strip().encode('utf-8')
-        if not bitcoin.is_address(address):
-            self.show_message(_('Invalid Bitcoin address.'))
+        if not ravencoin.is_address(address):
+            self.show_message(_('Invalid Ravencoin address.'))
             return
         try:
             # This can throw on invalid base64
@@ -2566,7 +2566,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             return
         # else if the user scanned an offline signed tx
         try:
-            data = bh2u(bitcoin.base_decode(data, length=None, base=43))
+            data = bh2u(ravencoin.base_decode(data, length=None, base=43))
         except BaseException as e:
             self.show_error((_('Could not decode QR code')+':\n{}').format(repr(e)))
             return
@@ -2766,7 +2766,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         def get_address():
             addr = str(address_e.text()).strip()
-            if bitcoin.is_address(addr):
+            if ravencoin.is_address(addr):
                 return addr
 
         def get_pk(*, raise_on_error=False):

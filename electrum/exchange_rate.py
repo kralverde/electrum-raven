@@ -12,7 +12,7 @@ from typing import Sequence, Optional
 
 from aiorpcx.curio import timeout_after, TaskTimeout, TaskGroup
 
-from .bitcoin import COIN
+from .ravencoin import COIN
 from .i18n import _
 from .util import (ThreadJob, make_dir, log_exceptions,
                    make_aiohttp_session, resource_path)
