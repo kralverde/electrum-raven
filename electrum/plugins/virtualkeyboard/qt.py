@@ -3,8 +3,6 @@ import random
 from PyQt5.QtWidgets import (QVBoxLayout, QGridLayout, QPushButton)
 
 from electrum.plugin import BasePlugin, hook
-from electrum.i18n import _
-
 
 class Plugin(BasePlugin):
     vkb = None
@@ -12,7 +10,7 @@ class Plugin(BasePlugin):
 
     @hook
     def password_dialog(self, pw, grid, pos):
-        vkb_button = QPushButton(_("+"))
+        vkb_button = QPushButton("+")
         vkb_button.setFixedWidth(20)
         vkb_button.clicked.connect(lambda: self.toggle_vkb(grid, pw))
         grid.addWidget(vkb_button, pos, 2)
