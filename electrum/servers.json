@@ -13,5 +13,10 @@
 	  "pruning": "-",
 	  "s": "50002",
 	  "version": "1.4"
-  }
+  },
+  "electrum3.rvn.rocks": {
+      "pruning": "-",
+	  "s": "50002",
+	  "version": "1.8"
+  },
 }

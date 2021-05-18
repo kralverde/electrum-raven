@@ -418,11 +418,11 @@ class Abstract_Wallet(AddressSynchronizer):
         if is_relevant:
             if is_mine:
                 if fee is not None:
-                    amount = v + fee
+                    amount = v['RVN'] + fee
                 else:
-                    amount = v
+                    amount = v['RVN']
             else:
-                amount = v
+                amount = v['RVN']
         else:
             amount = None
 

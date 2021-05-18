@@ -128,3 +128,4 @@ def set_testnet():
     global net
     net = RavencoinTestnet
 
+

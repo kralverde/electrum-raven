@@ -271,7 +271,7 @@ class Commands:
 
     @command('n')
     def test(self):
-        self.network.run_from_another_thread(self.network.interface.session.send_request('server.peers.subscribe'))
+        return self.network.run_from_another_thread(self.network.interface.session.send_request('server.peers.subscribe'))
 
     @command('')
     def serialize(self, jsontx):
