@@ -1,0 +1,15 @@
+Metadata-Version: 2.1
+Name: Electrum-RVN
+Version: 0.3.0
+Summary: Lightweight Ravencoin Wallet
+Home-page: https://ravencoin.org
+Author: Thomas Voegtlin
+Author-email: thomasv@electrum.org
+License: MIT Licence
+Description: Lightweight Ravencoin Wallet
+Platform: UNKNOWN
+Requires-Python: >=3.6.1
+Provides-Extra: hardware
+Provides-Extra: fast
+Provides-Extra: gui
+Provides-Extra: full
