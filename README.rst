@@ -1,3 +1,6 @@
+All work has been moved to https://github.com/Electrum-RVN-SIG/electrum-ravencoin
+
+
 kralverde's notes
 =====================================
 
